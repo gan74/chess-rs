@@ -16,21 +16,29 @@ pub enum Color {
 	White
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct ColoredPiece {
-	piece: Piece,
-	color: Color
+	pub piece: Piece,
+	pub color: Color
 }
 
 impl Piece {
 	pub fn char_for_piece(&self) -> char {
 		match self {
-			Empty => ' ',
-			Pawn => 'p',
-			Rook => 'r',
-			Knight => 'n',
-			Bishop => 'b',
-			Queen => 'q',
-			King => 'k'
+			Piece::Empty => '.',
+			Piece::Pawn => 'p',
+			Piece::Rook => 'r',
+			Piece::Knight => 'n',
+			Piece::Bishop => 'b',
+			Piece::Queen => 'q',
+			Piece::King => 'k'
+		}
+	}
+
+	pub fn colored(&self, col: Color) -> ColoredPiece {
+		ColoredPiece {
+			piece: *self,
+			color: col
 		}
 	}
 }
@@ -39,8 +47,8 @@ impl ColoredPiece {
 	pub fn char_for_piece(&self) -> char {
 		let c = self.piece.char_for_piece();
 		match self.color {
-			Black => c,
-			White => c.to_uppercase().next().unwrap_or(' ')
+			Color::Black => c,
+			Color::White => c.to_uppercase().next().unwrap_or(Piece::Empty.char_for_piece())
 		}
 	}
 }
