@@ -1,6 +1,7 @@
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Pos {
-	x: u8,
-	y: u8
+	i: u8
 }
 
 impl Pos {
@@ -8,12 +9,26 @@ impl Pos {
 		debug_assert!(x < 8);
 		debug_assert!(y < 8);
 		Pos {
-			x: x as u8,
-			y: y as u8
+			i: (x + y * 8) as u8
+		}
+	}
+
+	pub fn from_index(index: usize) -> Pos {
+		debug_assert!(index < 64);
+		Pos {
+			i: index as u8
 		}
 	}
 
 	pub fn index(&self) -> usize {
-		(self.x + self.y * 8) as usize
+		self.i as usize
+	}
+
+	pub fn col(&self) -> usize {
+		(self.i % 8) as usize
+	}
+
+	pub fn row(&self) -> usize {
+		(self.i / 8) as usize
 	}
 }

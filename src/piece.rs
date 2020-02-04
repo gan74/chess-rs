@@ -1,5 +1,6 @@
+use std::cmp;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Piece {
 	Empty,
 	Pawn,
@@ -10,13 +11,13 @@ pub enum Piece {
 	King
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Color {
 	Black,
 	White
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ColoredPiece {
 	pub piece: Piece,
 	pub color: Color
@@ -34,12 +35,16 @@ impl Piece {
 			Piece::King => 'k'
 		}
 	}
-
+ 	
 	pub fn colored(&self, col: Color) -> ColoredPiece {
 		ColoredPiece {
 			piece: *self,
 			color: col
 		}
+	}
+
+	pub fn is_empty(&self) -> bool {
+		*self == Piece::Empty
 	}
 }
 
@@ -50,5 +55,9 @@ impl ColoredPiece {
 			Color::Black => c,
 			Color::White => c.to_uppercase().next().unwrap_or(Piece::Empty.char_for_piece())
 		}
+	}
+
+	pub fn is_empty(&self) -> bool {
+		self.piece.is_empty()
 	}
 }
