@@ -46,12 +46,21 @@ impl Board {
         b
     }
 
+
+
+    pub fn possible_moves(&self, color: Color) -> PossibleMoveIterator {
+        PossibleMoveIterator::new(self, color)
+    }
+
+    #[inline(always)]
     pub fn piece_at(&self, pos: Pos) -> Option<ColoredPiece> {
         match self.board[pos.index()] {
             p if !p.is_empty() => Some(p),
             _ => None
         }
     }
+
+
 
     pub fn pieces(&self, col: Color) -> BitBoard {
         let mut b = BitBoard::empty();
@@ -119,6 +128,12 @@ impl BitBoard {
         }
     }
 
+    #[inline(always)]
+    pub fn is_empty(&self) -> bool {
+        self.board == 0
+    }
+
+    #[inline(always)]
     pub fn piece_at(&self, pos: Pos) -> bool {
         (self.board >> pos.index()) & 1u64 == 1
     }

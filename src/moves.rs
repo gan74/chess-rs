@@ -4,26 +4,123 @@ use crate::pos::*;
 
 use std::cmp;
 
-pub fn possible_moves(board: &Board, pos: Pos) -> BitBoard {
-    if let Some(piece) = board.piece_at(pos) {
-        possible_moves_for_piece(board, piece, pos)
-    } else {
-        BitBoard::empty()
+pub struct PossibleMoveIterator<'a> {
+    board: &'a Board,
+    allies: BitBoard,
+    enemies: BitBoard,
+    dst_board: BitBoard,
+    index: usize
+}
+
+impl<'a> PossibleMoveIterator<'a> {
+    pub fn new(board: &Board, color: Color) -> PossibleMoveIterator {
+        let allies = board.pieces(color);
+        let enemies = board.pieces(color.inverse());
+        let mut it = PossibleMoveIterator {
+            board: board,
+            allies: allies,
+            enemies: enemies,
+            dst_board: BitBoard::empty(),
+            index: 0
+        };
+        it.recompute_dst();
+        it
+    }
+
+    #[inline(always)]
+    fn at_end(&self) -> bool {
+        self.index == 64 * 64
+    }
+
+    #[inline(always)]
+    fn advance(&mut self) {
+        debug_assert!(!self.at_end());
+        loop {
+            self.index += 1;
+            if !self.at_end() && self.index % 64 == 0 {
+                self.recompute_dst();
+                if self.dst_board.is_empty() {
+                    continue;
+                }
+            }
+            break;
+        }
+    }
+
+    fn recompute_dst(&mut self) {
+        let src_pos = Pos::from_index(self.index / 64);
+        self.dst_board = {
+            if self.allies.piece_at(src_pos) {
+                match self.board.piece_at(src_pos) {
+                    Some(piece) => possible_moves_internal(self.allies, self.enemies, piece, src_pos),
+                    _ => unreachable!()
+                }
+            } else {
+                BitBoard::empty()
+            }
+        };
+    }
+
+}
+
+impl<'a> Iterator for PossibleMoveIterator<'a> {
+    type Item = Move;
+
+    #[inline(always)]
+    fn next(&mut self) -> Option<Self::Item> {
+        while !self.at_end() {
+            let dst_pos = Pos::from_index(self.index % 64);
+            let src_pos = Pos::from_index(self.index / 64);
+            if self.dst_board.piece_at(dst_pos) {
+                self.advance();
+                return Some(Move(src_pos, dst_pos))
+            } else {
+                self.advance();
+            }
+        }
+        None
     }
 }
 
-pub fn possible_moves_for_piece(board: &Board, colored: ColoredPiece, pos: Pos) -> BitBoard {
-    
-    let piece = colored.piece;
+
+
+pub fn possible_moves(board: &Board, pos: Pos) -> BitBoard {
+    match board.piece_at(pos) {
+        Some(piece) => possible_moves_for_piece(board, piece, pos),
+        _ => BitBoard::empty()
+    }
+}
+
+fn possible_moves_for_color(board: &Board, pos: Pos, color: Color) -> BitBoard {
+    match board.piece_at(pos) {
+        Some(piece) if piece.color == color => possible_moves_for_piece(board, piece, pos),
+        _ => BitBoard::empty()
+    }
+}
+
+fn possible_moves_for_piece(board: &Board, colored: ColoredPiece, pos: Pos) -> BitBoard {
+    if colored.is_empty() {
+        return BitBoard::empty();
+    }
+
     let color = colored.color;
-    
     let allies = board.pieces(color);
     let enemies = board.pieces(color.inverse());
     
+    possible_moves_internal(allies, enemies, colored, pos)
+}
+
+fn possible_moves_internal(allies: BitBoard, enemies: BitBoard, colored: ColoredPiece, pos: Pos) -> BitBoard {
+    if colored.is_empty() {
+        return BitBoard::empty();
+    }
+
+    let color = colored.color;
+
     let col = pos.col();
     let row = pos.row();
     
-    let moves = match piece {
+    let moves = match colored.piece {
         Piece::Empty => {
             BitBoard::empty()
         }
@@ -84,8 +181,8 @@ pub fn possible_moves_for_piece(board: &Board, colored: ColoredPiece, pos: Pos) 
         }
         
         Piece::Queen => {
-            possible_moves_for_piece(board, Piece::Rook.colored(color), pos)
-            .with_board(possible_moves_for_piece(board, Piece::Bishop.colored(color), pos))
+            possible_moves_internal(allies, enemies, Piece::Rook.colored(color), pos)
+            .with_board(possible_moves_internal(allies, enemies, Piece::Bishop.colored(color), pos))
         }
         
         Piece::Knight => {

@@ -51,7 +51,7 @@ fn play_once(players: &[Box<dyn PlayerController>; 2], max_moves: usize) -> Opti
 }
 
 fn main() {
-    let players = [CaptureAI::new_controller(), SwarmAI::new_controller()];
+    let players = [FirstMoveAI::new_controller(), FirstMoveAI::new_controller()];
 
     let mut total_games = 0;
     let mut draws = 0;
