@@ -36,6 +36,18 @@ impl Piece {
             Piece::King => 'k'
         }
     }
+
+    pub fn score(&self) -> i64 {
+        match self {
+            Piece::Empty => 0,
+            Piece::Pawn => 1,
+            Piece::Rook => 5,
+            Piece::Knight => 3,
+            Piece::Bishop => 3,
+            Piece::Queen => 10,
+            Piece::King => 64 * 10 + 1
+        }
+    }
      
     pub fn colored(&self, col: Color) -> ColoredPiece {
         ColoredPiece {
@@ -54,6 +66,13 @@ impl Color {
         match self {
             Color::Black => Color::White,
             Color::White => Color::Black
+        }
+    }
+
+    pub fn index(&self) -> usize {
+        match self {
+            Color::Black => 0,
+            Color::White => 1
         }
     }
 }

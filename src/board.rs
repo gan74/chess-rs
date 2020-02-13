@@ -65,12 +65,19 @@ impl Board {
 
 
     pub fn has_king(&self, color: Color) -> bool {
-        for p in self.board.iter() {
-            if p.color == color && p.piece == Piece::King {
-                return true;
+       self.king_pos(color).is_some()
+    }
+
+    pub fn king_pos(&self, color: Color) -> Option<Pos> {
+        for i in 0..64 {
+            let p = Pos::from_index(i);
+            if let Some(k) = self.piece_at(p) {
+                if k.color == color && k.piece == Piece::King {
+                    return Some(p)
+                }
             }
         }
-        false
+        None
     }
 
 
