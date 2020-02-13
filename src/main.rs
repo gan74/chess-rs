@@ -18,8 +18,22 @@ fn main() {
     let mut board = Board::new();
     let mut color = Color::White;
     loop {
+        if !board.has_king(color) {
+            println!("{} lost!", color);
+            break;
+        }
+        
         if let Some(m) = player.play(color, &board) {
-            color = color.inverse();
+            match board.try_move(m) {
+                Ok(b) => {
+                    board = b;
+                    color = color.inverse();
+                }
+
+                Err(_) => {
+                    println!("Invalid move.");
+                }
+            }
         } else {
             break;
         }

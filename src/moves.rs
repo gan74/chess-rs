@@ -22,24 +22,37 @@ pub fn possible_moves_for_piece(board: &Board, colored: ColoredPiece, pos: Pos) 
     let col = pos.col();
     let row = pos.row();
     
-    match piece {
+    let moves = match piece {
         Piece::Empty => {
             unreachable!();
         }
 
         Piece::Pawn => {
-            let mut pawn = BitBoard::empty().with(pos);
-
-            let (dir, start) = if color == Color::Black {
+            // TODO en passant
+            let (mut dir, start_row) : (isize, usize) = if color == Color::Black {
                 (-1, 6)
             } else {
                 (1, 1)
             };
 
-            pawn.shift_x(dir);
-            if row == start {
-                // TODO captures
-                pawn.add_board(pawn.x_shifted(dir));
+            if row == start_row {
+                dir = dir * 2;
+            }
+
+            let dst_row = cmp::min(cmp::max(row as isize + dir, 0), 7) as usize;
+            let mut pawn = path(enemies, allies, pos, col, dst_row);
+
+            // captures
+            {
+                let dst_row = cmp::min(cmp::max(row as isize + dir.signum(), 0), 7) as usize;
+                let left_col = cmp::max((col as isize) - 1, 0) as usize;
+                let right_col = cmp::min(col + 1, 7);
+                if enemies.piece_at(Pos::new(left_col, dst_row)) {
+                    pawn.add(Pos::new(left_col, dst_row));
+                }
+                if enemies.piece_at(Pos::new(right_col, dst_row)) {
+                    pawn.add(Pos::new(right_col, dst_row));
+                }
             }
 
             pawn
@@ -75,7 +88,7 @@ pub fn possible_moves_for_piece(board: &Board, colored: ColoredPiece, pos: Pos) 
         }
         
         Piece::Knight => {
-            let mut knight = BitBoard::empty().with(pos);
+            let mut knight = BitBoard::empty();
             for offset in &[(2, 1), (-2, 1), (1, 2), (1, -2)] {
                 for mul in &[-1, 1] {
                     let col = (col as isize) + (offset.0 * mul) as isize;
@@ -92,7 +105,7 @@ pub fn possible_moves_for_piece(board: &Board, colored: ColoredPiece, pos: Pos) 
         }
         
         Piece::King => {
-            let mut king = BitBoard::empty().with(pos);
+            let mut king = BitBoard::empty();
             for x in -1..2 {
                 let col = (col as isize) + x;
                 for y in -1..2 {
@@ -107,8 +120,11 @@ pub fn possible_moves_for_piece(board: &Board, colored: ColoredPiece, pos: Pos) 
             }
             king
         }
-        
-    }
+    };
+
+    debug_assert!(!moves.piece_at(pos));
+
+    moves
 }
 
 
@@ -127,7 +143,7 @@ fn path(enemies: BitBoard, allies: BitBoard, start: Pos, end_col: usize, end_row
     let s_row = d_row.signum();
     
     
-    let mut board = BitBoard::empty().with(start);
+    let mut board = BitBoard::empty();
     
         
     let mut col = start.col() as isize;

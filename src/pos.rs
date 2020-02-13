@@ -83,9 +83,13 @@ impl FromStr for Move {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let s = s.trim_start();
-        match (Pos::from_str(&s[0..2]), Pos::from_str(&s[2..])) {
-            (Ok(a), Ok(b)) => Ok(Move(a, b)),
-            _ => Err(())
+        if s.len() < 4 {
+        	Err(())
+        } else {
+	        match (Pos::from_str(&s[0..2]), Pos::from_str(&s[2..])) {
+	            (Ok(a), Ok(b)) => Ok(Move(a, b)),
+	            _ => Err(())
+	        }
         }
     }
 }

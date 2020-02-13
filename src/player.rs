@@ -25,9 +25,7 @@ impl PlayerController for Player {
                 Ok(_) => {
                     if let Some(m) = Move::from_str(&input).ok() {
                         if board.piece_at(m.0).color == color {
-                            if possible_moves(board, m.0).piece_at(m.1) {
-                                return Some(m);
-                            }
+                            return Some(m);
                         }
                         println!("Move is invalid.");
                     } else {

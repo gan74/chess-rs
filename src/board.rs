@@ -1,4 +1,5 @@
 use crate::piece::*;
+use crate::moves::*;
 use crate::pos::*;
 
 use std::fmt;
@@ -58,7 +59,46 @@ impl Board {
         }
         b
     }
+
+
+    pub fn has_king(&self, color: Color) -> bool {
+        for p in self.board.iter() {
+            if p.color == color && p.piece == Piece::King {
+                return true;
+            }
+        }
+        false
+    }
+
+
+    pub fn do_move(&mut self, m: Move) {
+        self.board[m.1.index()] = self.board[m.0.index()];
+        self.board[m.0.index()].piece = Piece::Empty;
+    }
+
+    pub fn moved(&self, m: Move) -> Board {
+        let mut b = self.clone();
+        b.do_move(m);
+        b
+    }
+
+    pub fn try_move(&self, m: Move) -> Result<Board, ()> {
+        if self.is_valid_move(m) {
+            Ok(self.moved(m))
+        } else {
+            Err(())
+        }
+    }
+
+    pub fn is_valid_move(&self, m: Move) -> bool {
+        possible_moves(self, m.0).piece_at(m.1)
+    }
 }
+
+
+
+
+
 
 
 
@@ -78,10 +118,21 @@ impl BitBoard {
         self.board = self.with(pos).board;
     }
 
+    pub fn remove(&mut self, pos: Pos) {
+        self.board = self.without(pos).board;
+    }
+
     pub fn with(&self, pos: Pos) -> BitBoard {
         let mask = 1u64 << pos.index();
         BitBoard {
             board: self.board | mask
+        }
+    }
+
+    pub fn without(&self, pos: Pos) -> BitBoard {
+        let mask = 1u64 << pos.index();
+        BitBoard {
+            board: self.board & !mask
         }
     }
 
@@ -97,20 +148,6 @@ impl BitBoard {
     }
 
 
-    pub fn shift_x(&mut self, s: isize) {
-        self.board = self.x_shifted(s).board;
-    }
-
-    pub fn x_shifted(&self, s: isize) -> BitBoard {
-        BitBoard {
-            board: if s > 0 {
-                self.board << (s * 8)
-            } else {
-                self.board >> (-s * 8)
-            }
-        }
-    }
-    
     
     pub fn add_row(&mut self, row: usize) {
         self.board = self.with_row(row).board;
