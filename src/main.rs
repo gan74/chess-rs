@@ -7,10 +7,12 @@ mod board;
 mod piece;
 mod moves;
 mod player;
+mod ai;
 
 use board::*;
 use piece::*;
 use player::*;
+use ai::*;
 
 use std::time::Instant;
 
@@ -41,11 +43,15 @@ fn play_once(players: &[Box<dyn PlayerController>; 2], max_moves: usize) -> Opti
     };
 
     let winner = color.inverse();
+
+    /*println!("{} wins!", winner);
+    println!("final board:\n{}", board);*/
+
     Some(winner)
 }
 
 fn main() {
-    let players = [CaptureAI::new_controller(), RandomAI::new_controller()];
+    let players = [CaptureAI::new_controller(), SwarmAI::new_controller()];
 
     let mut total_games = 0;
     let mut draws = 0;
@@ -63,9 +69,16 @@ fn main() {
     let end = Instant::now();
     let time = end.duration_since(start);
     
+    if victories[0] > victories[1] {
+        println!("{} Wins!", players[0].name());
+    } else if victories[1] > victories[0] {
+        println!("{} Wins!", players[1].name());
+    } else {
+        println!("Draw!");
+    }
     println!("total games: {}", total_games);
     println!("  draws: {}", draws);
-    println!("  white victories: {}", victories[Color::White.index()]);
-    println!("  black victories: {}", victories[Color::Black.index()]);
+    println!("  {} victories: {}", players[0].name(), victories[0]);
+    println!("  {} victories: {}", players[1].name(), victories[1]);
     println!("  total time: {:?} ({} g/s)", time, ((total_games as f64 / time.as_millis() as f64) * 1000.0).round() as i64);
 }
