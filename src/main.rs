@@ -15,9 +15,9 @@ fn main() {
     println!("{}", b);
     println!("\n{}", b.pieces(Color::Black));
     println!("\n{}", b.pieces(Color::White));
-	
-	for i in 0..8 {
-		println!("\n{}", moves(&b, Pos::new(i, 0)));
-	}
-	
+    
+    for i in 0..8 {
+        println!("\n{}", possible_moves(&b, Pos::new(i, 0)));
+    }
+    
 }
