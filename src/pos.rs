@@ -2,7 +2,7 @@ use std::fmt;
 use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct Move(Pos, Pos);
+pub struct Move(pub Pos, pub Pos);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Pos {

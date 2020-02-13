@@ -1,4 +1,6 @@
 
+use std::fmt;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Piece {
     Empty,
@@ -67,5 +69,27 @@ impl ColoredPiece {
 
     pub fn is_empty(&self) -> bool {
         self.piece.is_empty()
+    }
+}
+
+
+impl fmt::Display for Piece {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.char_for_piece())
+    }
+}
+
+impl fmt::Display for Color {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Color::Black => write!(f, "Black"),
+            Color::White => write!(f, "White")
+        }
+    }
+}
+
+impl fmt::Display for ColoredPiece {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.char_for_piece())
     }
 }
