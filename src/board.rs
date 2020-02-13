@@ -35,6 +35,17 @@ impl Board {
 		}
 		b
 	}
+	
+	pub fn test_board() -> Board {
+		let mut b = Board::empty();
+		let pieces: [Piece; 8] = [Piece::Rook, Piece::Knight, Piece::Bishop, Piece::Queen, Piece::King, Piece::Bishop, Piece::Knight, Piece::Rook];
+		for x in 0..8 {
+			b.board[Pos::new(x, 7).index()] = pieces[7 - x].colored(Color::Black);
+			b.board[Pos::new(x, 6).index()] = Piece::Pawn.colored(Color::Black);
+			b.board[Pos::new(x, 0).index()] = pieces[x].colored(Color::White);
+		}
+		b
+	}
 
 	pub fn piece_at(&self, pos: Pos) -> ColoredPiece {
 		self.board[pos.index()]
@@ -101,8 +112,37 @@ impl BitBoard {
 			}
 		}
 	}
+	
+	
+	pub fn add_row(&mut self, row: usize) {
+		self.board = self.with_row(row).board;
+	}
 
+	pub fn with_row(&self, row: usize) -> BitBoard {
+		let mask = 0xFFu64 << (row * 8);
+		BitBoard {
+			board: self.board | mask
+		}
+	}
+	
+	
+	pub fn add_col(&mut self, col: usize) {
+		self.board = self.with_col(col).board;
+	}
 
+	pub fn with_col(&self, col: usize) -> BitBoard {
+		let mut row = 0x01u64 << col;
+		let mut mask = 0;
+		for _ in 0..8 {
+			mask = mask | row;
+			row = row << 8;
+		}
+		BitBoard {
+			board: self.board | mask
+		}
+	}
+	
+	
 	pub fn intersect(&mut self, board: BitBoard) {
 		self.board = self.intersection(board).board
 	}

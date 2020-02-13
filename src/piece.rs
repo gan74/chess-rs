@@ -1,4 +1,3 @@
-use std::cmp;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Piece {
@@ -45,6 +44,15 @@ impl Piece {
 
 	pub fn is_empty(&self) -> bool {
 		*self == Piece::Empty
+	}
+}
+
+impl Color {
+	pub fn inverse(&self) -> Color {
+		match self {
+			Color::Black => Color::White,
+			Color::White => Color::Black
+		}
 	}
 }
 
