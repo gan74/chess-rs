@@ -18,7 +18,7 @@ pub struct BitBoard {
 impl Board {
     pub fn empty() -> Board {
         Board {
-            board: [ColoredPiece{piece: Piece::Empty, color: Color::Black}; 64]
+            board: [ColoredPiece::empty(); 64]
         }
     }
 
@@ -46,8 +46,11 @@ impl Board {
         b
     }
 
-    pub fn piece_at(&self, pos: Pos) -> ColoredPiece {
-        self.board[pos.index()]
+    pub fn piece_at(&self, pos: Pos) -> Option<ColoredPiece> {
+        match self.board[pos.index()] {
+            p if !p.is_empty() => Some(p),
+            _ => None
+        }
     }
 
     pub fn pieces(&self, col: Color) -> BitBoard {
@@ -203,7 +206,7 @@ impl fmt::Display for Board {
             let row = 7 - y;
             write!(f, "{}|", row + 1)?;
             for x in 0..8  {
-                let piece = self.piece_at(Pos::new(x, row)).char_for_piece();
+                let piece = self.piece_at(Pos::new(x, row)).unwrap_or(ColoredPiece::empty()).char_for_piece();
                 write!(f, " {}", piece)?;
             }
             write!(f, " |{}\n", row + 1)?;

@@ -5,13 +5,14 @@ use crate::pos::*;
 use std::cmp;
 
 pub fn possible_moves(board: &Board, pos: Pos) -> BitBoard {
-    possible_moves_for_piece(board, board.piece_at(pos), pos)
+    if let Some(piece) = board.piece_at(pos) {
+        possible_moves_for_piece(board, piece, pos)
+    } else {
+        BitBoard::empty()
+    }
 }
 
 pub fn possible_moves_for_piece(board: &Board, colored: ColoredPiece, pos: Pos) -> BitBoard {
-    if colored.is_empty() {
-        return BitBoard::empty();
-    }
     
     let piece = colored.piece;
     let color = colored.color;
@@ -24,7 +25,7 @@ pub fn possible_moves_for_piece(board: &Board, colored: ColoredPiece, pos: Pos) 
     
     let moves = match piece {
         Piece::Empty => {
-            unreachable!();
+            BitBoard::empty()
         }
 
         Piece::Pawn => {
