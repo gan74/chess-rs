@@ -16,8 +16,9 @@ pub trait PlayerController {
 pub struct Player();
 
 impl Player {
-    pub fn new_controller() -> Box<dyn PlayerController> {
-        Box::new(Player{})
+    pub fn new() -> Player {
+        Player {
+        }
     }
 }
 

@@ -14,8 +14,9 @@ pub struct FirstMoveAI {
 }
 
 impl FirstMoveAI {
-    pub fn new_controller() -> Box<dyn PlayerController> {
-        Box::new(FirstMoveAI{})
+    pub fn new() -> FirstMoveAI {
+        FirstMoveAI {
+        }
     }
 }
 
@@ -46,10 +47,6 @@ impl RandomAI {
         RandomAI {
             check_mat: check_mat
         }
-    }
-
-    pub fn new_controller() -> Box<dyn PlayerController> {
-        Box::new(RandomAI::new(true))
     }
 }
 
@@ -90,23 +87,20 @@ pub struct CaptureAI {
 
 impl CaptureAI {
     pub fn new() -> CaptureAI {
-        CaptureAI::new_with_fallback(SwarmAI::new_controller())
+        let fallback = SwarmAI::new();
+        CaptureAI::new_with_fallback(fallback)
     }
 
-    pub fn new_with_fallback(fallback: Box<dyn PlayerController>) -> CaptureAI {
+    pub fn new_with_fallback<T: 'static + PlayerController>(fallback: T) -> CaptureAI {
         CaptureAI {
-            fallback: fallback
+            fallback: Box::new(fallback)
         }
-    }
-
-    pub fn new_controller() -> Box<dyn PlayerController> {
-        Box::new(CaptureAI::new())
     }
 }
 
 impl PlayerController for CaptureAI {
     fn name(&self) -> String {
-        "Capture".to_string()
+        format!("{}Capture", self.fallback.name())
     }
 
     fn play(&self, color: Color, board: &Board) -> Option<Move> {
@@ -146,10 +140,6 @@ impl SwarmAI {
     pub fn new() -> SwarmAI {
         SwarmAI {
         }
-    }
-
-    pub fn new_controller() -> Box<dyn PlayerController> {
-        Box::new(SwarmAI::new())
     }
 }
 

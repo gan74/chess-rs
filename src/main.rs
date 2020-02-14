@@ -2,6 +2,7 @@
 
 extern crate rand;
 
+mod elo;
 mod pos;
 mod board;
 mod bitboard;
@@ -10,77 +11,60 @@ mod moves;
 mod player;
 mod ai;
 
-use board::*;
-use piece::*;
-use player::*;
+use elo::*;
 use ai::*;
 
 use std::time::Instant;
+use std::cmp;
 
-fn play_once(players: &[Box<dyn PlayerController>; 2], max_moves: usize) -> Option<Color> {
-    let mut board = Board::new();
-    let mut color = Color::White;
+use rand::{thread_rng, Rng};
 
-    for _moves in 0..max_moves {
-        if !board.has_king(color) {
-            //println!("{}", _moves);
-            break;
-        }
+const GAMES: usize = 100000;
 
-        if let Some(m) = players[color.index()].play(color, &board) {
-            match board.try_move(m) {
-                Ok(b) => {
-                    board = b;
-                    color = color.inverse();
-                }
+fn gen_player_indexes(player_count: usize) -> (usize, usize) {
+    assert!(player_count > 1);
+    let mut rng = thread_rng();
+    let i = rng.gen_range(0, player_count);
+    let j = rng.gen_range(0, player_count - 1);
 
-                Err(_) => {
-                    println!("Invalid move ({}).", color);
-                    break;
-                }
-            }
-        } else {
-            break;
-        }
-    };
-
-    let winner = color.inverse();
-
-    /*println!("{} wins!", winner);
-    println!("final board:\n{}", board);*/
-
-    Some(winner)
+    if j == i {
+        (i, player_count - 1)
+    } else {
+        (i, j)
+    }
 }
 
 fn main() {
-    let players = [FirstMoveAI::new_controller(), CaptureAI::new_controller()];
-
-    let mut total_games = 0;
-    let mut draws = 0;
-    let mut victories = [0, 0];
+    let mut players = Vec::new();
+    players.push(EloPlayer::new(RandomAI::new(true)));
+    players.push(EloPlayer::new(FirstMoveAI::new()));
+    players.push(EloPlayer::new(SwarmAI::new()));
+    players.push(EloPlayer::new(CaptureAI::new()));
 
     let start = Instant::now();
-    while total_games < 50000 {
-        if let Some(winner) = play_once(&players, 100) {
-            victories[winner.index()] += 1;
-        } else {
-            draws += 1;
-        }
-        total_games += 1
+
+    for _ in 0..GAMES {
+        let (a, b) = gen_player_indexes(players.len());
+        let (first, second) = (cmp::min(a, b), cmp::max(a, b));
+        assert!(a != b);
+
+        let (pa, pb) = players.split_at_mut(second);
+        let pa: &mut EloPlayer = &mut pa[first];
+        let pb: &mut EloPlayer = &mut pb[0];
+        pa.play_once(pb);
     }
+
     let end = Instant::now();
     let time = end.duration_since(start);
-    
-    if victories[0] > victories[1] {
-        println!("{} Wins!", players[0].name());
-    } else if victories[1] > victories[0] {
-        println!("{} Wins!", players[1].name());
-    } else {
-        println!("Draw!");
+
+    println!("{} games played in {:?} ({} g/s)", GAMES, time, ((GAMES as f64 / time.as_millis() as f64) * 1000.0).round() as i64);
+
+    let mut total = 0;
+    for player in players {
+        println!("\n{}", player.name());
+        println!("  elo: {}", player.elo_score().round() as i64);
+        println!("  games: (w: {}, l: {}, d: {})", player.victories, player.loses, player.draws);
+        total += player.victories + player.loses + player.draws;
     }
-    println!("total games: {}", total_games);
-    println!("  draws: {}", draws);
-    println!("  {} victories: {}", players[0].name(), victories[0]);
-    println!("  {} victories: {}", players[1].name(), victories[1]);
-    println!("  total time: {:?} ({} g/s)", time, ((total_games as f64 / time.as_millis() as f64) * 1000.0).round() as i64);
+    assert!(total == GAMES * 2);
 }
