@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 extern crate rand;
+extern crate indicatif;
 
 mod elo;
 mod pos;
@@ -18,8 +19,9 @@ use std::time::Instant;
 use std::cmp;
 
 use rand::{thread_rng, Rng};
+use indicatif::ProgressIterator;
 
-const GAMES: usize = 100000;
+const GAMES: usize = 10000;
 
 fn gen_player_indexes(player_count: usize) -> (usize, usize) {
     assert!(player_count > 1);
@@ -43,15 +45,18 @@ fn main() {
 
     let start = Instant::now();
 
-    for _ in 0..GAMES {
-        let (a, b) = gen_player_indexes(players.len());
-        let (first, second) = (cmp::min(a, b), cmp::max(a, b));
-        assert!(a != b);
+    println!("Simulating:");
+    for _ in (0..(GAMES / 1000)).progress() {
+        for _ in 0..1000 {
+            let (a, b) = gen_player_indexes(players.len());
+            let (first, second) = (cmp::min(a, b), cmp::max(a, b));
+            assert!(a != b);
 
-        let (pa, pb) = players.split_at_mut(second);
-        let pa: &mut EloPlayer = &mut pa[first];
-        let pb: &mut EloPlayer = &mut pb[0];
-        pa.play_once(pb);
+            let (pa, pb) = players.split_at_mut(second);
+            let pa: &mut EloPlayer = &mut pa[first];
+            let pb: &mut EloPlayer = &mut pb[0];
+            pa.play_once(pb);
+        }
     }
 
     let end = Instant::now();

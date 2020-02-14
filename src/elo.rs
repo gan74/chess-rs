@@ -46,7 +46,7 @@ impl Elo {
 
 
     fn win_probability(&self, other: Elo) -> f64 {
-        let p0 = 1.0 / (1.0 + 10.0_f64.powf((self.score - other.score) / 400.0));
+        let p0 = 1.0 / (1.0 + 10.0_f64.powf((other.score - self.score) / 400.0));
         debug_assert!(p0 >= 0.0);
         debug_assert!(p0 <= 1.0);
         p0
