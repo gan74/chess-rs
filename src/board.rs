@@ -1,3 +1,4 @@
+use crate::bitboard::*;
 use crate::piece::*;
 use crate::moves::*;
 use crate::pos::*;
@@ -8,12 +9,6 @@ use std::fmt;
 pub struct Board {
     board: [ColoredPiece; 64]
 }
-
-#[derive(Debug, Clone, Copy)]
-pub struct BitBoard {
-    board: u64
-}
-
 
 impl Board {
     pub fn empty() -> Board {
@@ -116,110 +111,6 @@ impl Board {
 
 
 
-
-
-
-
-
-impl BitBoard {
-    pub fn empty() -> BitBoard {
-        BitBoard {
-            board: 0
-        }
-    }
-
-    #[inline(always)]
-    pub fn is_empty(&self) -> bool {
-        self.board == 0
-    }
-
-    #[inline(always)]
-    pub fn piece_at(&self, pos: Pos) -> bool {
-        (self.board >> pos.index()) & 1u64 == 1
-    }
-
-
-    pub fn add(&mut self, pos: Pos) {
-        self.board = self.with(pos).board;
-    }
-
-    pub fn remove(&mut self, pos: Pos) {
-        self.board = self.without(pos).board;
-    }
-
-    pub fn with(&self, pos: Pos) -> BitBoard {
-        let mask = 1u64 << pos.index();
-        BitBoard {
-            board: self.board | mask
-        }
-    }
-
-    pub fn without(&self, pos: Pos) -> BitBoard {
-        let mask = 1u64 << pos.index();
-        BitBoard {
-            board: self.board & !mask
-        }
-    }
-
-
-    pub fn add_board(&mut self, board: BitBoard) {
-        self.board = self.with_board(board).board;
-    }
-
-    pub fn with_board(&self, board: BitBoard) -> BitBoard {
-        BitBoard {
-            board: self.board | board.board
-        }
-    }
-
-
-    
-    pub fn add_row(&mut self, row: usize) {
-        self.board = self.with_row(row).board;
-    }
-
-    pub fn with_row(&self, row: usize) -> BitBoard {
-        let mask = 0xFFu64 << (row * 8);
-        BitBoard {
-            board: self.board | mask
-        }
-    }
-    
-    
-    pub fn add_col(&mut self, col: usize) {
-        self.board = self.with_col(col).board;
-    }
-
-    pub fn with_col(&self, col: usize) -> BitBoard {
-        let mut row = 0x01u64 << col;
-        let mut mask = 0;
-        for _ in 0..8 {
-            mask = mask | row;
-            row = row << 8;
-        }
-        BitBoard {
-            board: self.board | mask
-        }
-    }
-    
-    
-    pub fn intersect(&mut self, board: BitBoard) {
-        self.board = self.intersection(board).board
-    }
-
-    pub fn intersection(&self, board: BitBoard) -> BitBoard {
-        BitBoard {
-            board: self.board & board.board
-        }
-    }
-}
-
-
-
-
-
-
-
 impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "   a b c d e f g h\n")?;
@@ -230,28 +121,6 @@ impl fmt::Display for Board {
             for x in 0..8  {
                 let piece = self.piece_at(Pos::new(x, row)).unwrap_or(ColoredPiece::empty()).char_for_piece();
                 write!(f, " {}", piece)?;
-            }
-            write!(f, " |{}\n", row + 1)?;
-        }
-        write!(f, " +-----------------+\n")?;
-        write!(f, "   a b c d e f g h\n")
-    }
-}
-
-impl fmt::Display for BitBoard {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "   a b c d e f g h\n")?;
-        write!(f, " +-----------------+\n")?;
-        for y in 0..8  {
-            let row = 7 - y;
-            write!(f, "{}|", row + 1)?;
-            for x in 0..8  {
-                let bit = if self.piece_at(Pos::new(x, row)) {
-                    1
-                } else {
-                    0
-                };
-                write!(f, " {}", bit)?;
             }
             write!(f, " |{}\n", row + 1)?;
         }

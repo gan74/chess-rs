@@ -1,3 +1,4 @@
+use crate::bitboard::*;
 use crate::board::*;
 use crate::piece::*;
 use crate::pos::*;

@@ -4,6 +4,7 @@ extern crate rand;
 
 mod pos;
 mod board;
+mod bitboard;
 mod piece;
 mod moves;
 mod player;
