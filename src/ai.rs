@@ -7,7 +7,6 @@ use crate::player::*;
 use rand::{thread_rng, Rng};
 
 
-const USE_ITERATOR: bool = true;
 
 // http://tom7.org/chess/weak.pdf
 
@@ -26,25 +25,12 @@ impl PlayerController for FirstMoveAI {
     }
 
     fn play(&self, color: Color, board: &Board) -> Option<Move> {
-        if USE_ITERATOR {
-            board.possible_moves(color).next()
-        } else {
-            let pieces = board.pieces(color);
-            for i in 0..64 {
-                let src = Pos::from_index(i);
-                if pieces.piece_at(src) {
-                    let possible_moves = possible_moves(board, src);
-
-                    for i in 0..64 {
-                        let dst = Pos::from_index(i);
-                        if possible_moves.piece_at(dst) {
-                            return Some(Move(src, dst));
-                        }
-                    }
-                }
+        for src in board.pieces(color).iter() {
+            for dst in possible_moves(board, src).iter() {
+                return Some(Move(src, dst));
             }
-            None
         }
+        None
     }
 }
 
@@ -129,40 +115,14 @@ impl PlayerController for CaptureAI {
 
         let enemy_color = color.inverse();
 
-        if USE_ITERATOR {
-            for m in board.possible_moves(color) {
-                match board.piece_at(m.1) {
-                    Some(p) if p.color == enemy_color => {
+        for src in board.pieces(color).iter() {
+            for dst in possible_moves(board, src).iter() {
+                if let Some(p) = board.piece_at(dst) {
+                    if p.color == enemy_color {
                         let score = p.piece.score();
                         if capture_score < score {
-                            best_capture = Some(m);
+                            best_capture = Some(Move(src, dst));
                             capture_score = score;
-                        }
-                    }
-
-                    _ => ()
-                }
-            }
-        } else {
-            let pieces = board.pieces(color);
-
-            for i in 0..64 {
-                let src = Pos::from_index(i);
-                if pieces.piece_at(src) {
-                    let possible_moves = possible_moves(board, src);
-
-                    for i in 0..64 {
-                        let dst = Pos::from_index(i);
-                        if possible_moves.piece_at(dst) {
-                            if let Some(p) = board.piece_at(dst) {
-                                if p.color == enemy_color {
-                                    let score = p.piece.score();
-                                    if capture_score < score {
-                                        best_capture = Some(Move(src, dst));
-                                        capture_score = score;
-                                    }
-                                }
-                            }
                         }
                     }
                 }
@@ -204,31 +164,12 @@ impl PlayerController for SwarmAI {
 
         let enemy_king = board.king_pos(color.inverse()).unwrap_or(Pos::from_index(0));
 
-        if USE_ITERATOR {
-            for m in board.possible_moves(color) {
-                let score = distance(enemy_king, m.1);
+        for src in board.pieces(color).iter() {
+            for dst in possible_moves(board, src).iter() {
+                let score = distance(enemy_king, dst);
                 if score < best_score {
-                    best_move = Some(m);
+                    best_move = Some(Move(src, dst));
                     best_score = score;
-                }
-            }
-        } else {
-            let pieces = board.pieces(color);
-            for i in 0..64 {
-                let src = Pos::from_index(i);
-                if pieces.piece_at(src) {
-                    let possible_moves = possible_moves(board, src);
-
-                    for i in 0..64 {
-                        let dst = Pos::from_index(i);
-                        if possible_moves.piece_at(dst) {
-                            let score = distance(enemy_king, dst);
-                            if score < best_score {
-                                best_move = Some(Move(src, dst));
-                                best_score = score;
-                            }
-                        }
-                    }
                 }
             }
         }

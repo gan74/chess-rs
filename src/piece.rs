@@ -78,12 +78,12 @@ impl Color {
 }
 
 impl ColoredPiece {
-	pub fn empty() -> ColoredPiece {
-		ColoredPiece {
-			piece: Piece::Empty,
-			color: Color::Black
-		}
-	}
+    pub fn empty() -> ColoredPiece {
+        ColoredPiece {
+            piece: Piece::Empty,
+            color: Color::Black
+        }
+    }
 
     pub fn char_for_piece(&self) -> char {
         let c = self.piece.char_for_piece();

@@ -5,6 +5,7 @@ use crate::pos::*;
 
 use std::cmp;
 
+// PossibleMoveIterator has a tendency to be very slow, not sure why...
 pub struct PossibleMoveIterator<'a> {
     src_index: usize,
     dst_index: usize,
@@ -38,7 +39,7 @@ impl<'a> PossibleMoveIterator<'a> {
 
     #[inline(always)]
     fn advance(&mut self) {
-        assert!(self.dst_index < 64);
+        debug_assert!(self.dst_index < 64);
         if self.dst_index == 63 {
             self.src_index += 1;
             self.dst_index = 0;

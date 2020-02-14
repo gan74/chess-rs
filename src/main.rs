@@ -53,14 +53,14 @@ fn play_once(players: &[Box<dyn PlayerController>; 2], max_moves: usize) -> Opti
 }
 
 fn main() {
-    let players = [FirstMoveAI::new_controller(), FirstMoveAI::new_controller()];
+    let players = [FirstMoveAI::new_controller(), CaptureAI::new_controller()];
 
     let mut total_games = 0;
     let mut draws = 0;
     let mut victories = [0, 0];
 
     let start = Instant::now();
-    while total_games < 10000 {
+    while total_games < 50000 {
         if let Some(winner) = play_once(&players, 100) {
             victories[winner.index()] += 1;
         } else {
