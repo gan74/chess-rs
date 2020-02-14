@@ -4,6 +4,8 @@ use crate::pos::*;
 use crate::moves::*;
 use crate::player::*;
 
+use std::cmp;
+
 use rand::{thread_rng, Rng};
 
 
@@ -156,7 +158,7 @@ impl PlayerController for SwarmAI {
 
         for src in board.pieces(color).iter() {
             for dst in possible_moves(board, src).iter() {
-                let score = distance(enemy_king, dst);
+                let score = rook_distance(enemy_king, dst);
                 if score < best_score {
                     best_move = Some(Move(src, dst));
                     best_score = score;
@@ -168,9 +170,13 @@ impl PlayerController for SwarmAI {
     }
 }
 
+fn king_distance(a: Pos, b: Pos) -> i64 {
+    let d_col = (a.col() as i64) - (b.col() as i64);
+    let d_row = (a.row() as i64) - (b.row() as i64);
+    cmp::max(d_col.abs(), d_row.abs())
+}
 
-
-fn distance(a: Pos, b: Pos) -> i64 {
+fn rook_distance(a: Pos, b: Pos) -> i64 {
     let d_col = (a.col() as i64) - (b.col() as i64);
     let d_row = (a.row() as i64) - (b.row() as i64);
     d_col.abs() + d_row.abs()

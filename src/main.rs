@@ -15,13 +15,13 @@ mod ai;
 use elo::*;
 use ai::*;
 
-use std::time::Instant;
+use std::time::{Instant, Duration};
 use std::cmp;
 
 use rand::{thread_rng, Rng};
 use indicatif::ProgressIterator;
 
-const GAMES: usize = 10000;
+const GAMES: usize = 50000;
 
 fn gen_player_indexes(player_count: usize) -> (usize, usize) {
     assert!(player_count > 1);
@@ -36,6 +36,10 @@ fn gen_player_indexes(player_count: usize) -> (usize, usize) {
     }
 }
 
+fn per_second(n: usize, time: Duration) -> f64 {
+    (n as f64 / time.as_millis() as f64) * 1000.0
+}
+
 fn main() {
     let mut players = Vec::new();
     players.push(EloPlayer::new(RandomAI::new(true)));
@@ -46,6 +50,8 @@ fn main() {
     let start = Instant::now();
 
     println!("Simulating:");
+
+    let mut moves = 0;
     for _ in (0..(GAMES / 1000)).progress() {
         for _ in 0..1000 {
             let (a, b) = gen_player_indexes(players.len());
@@ -55,14 +61,15 @@ fn main() {
             let (pa, pb) = players.split_at_mut(second);
             let pa: &mut EloPlayer = &mut pa[first];
             let pb: &mut EloPlayer = &mut pb[0];
-            pa.play_once(pb);
+            moves += pa.play_once(pb);
         }
     }
 
     let end = Instant::now();
     let time = end.duration_since(start);
 
-    println!("{} games played in {:?} ({} g/s)", GAMES, time, ((GAMES as f64 / time.as_millis() as f64) * 1000.0).round() as i64);
+    println!("\n{} games played in {:?} ({} g/s)", GAMES, time, per_second(GAMES, time).round() as i64);
+    println!("{} moves played ({} m/s)", moves, per_second(moves, time).round() as i64);
 
     let mut total = 0;
     for player in players {

@@ -6,6 +6,7 @@ use rand::{thread_rng, Rng};
 
 const ELO_STARTING_SCORE : i64 = 1200;
 const ELO_K : f64 = 1.0;
+const MAX_MOVES : usize = 100;
 
 
 #[derive(Debug, Clone, Copy)]
@@ -85,19 +86,21 @@ impl EloPlayer {
         other.draws += 1;
     }
 
-    pub fn play_once(&mut self, other: &mut EloPlayer) {
+    pub fn play_once(&mut self, other: &mut EloPlayer) -> usize {
         let players = [&(*self.controller), &(*other.controller)];
-        match play_once(players, 100) {
+        let (result, moves) = play_once(players, MAX_MOVES);
+        match result {
             Some(0) => self.win(other, ELO_K),
             Some(1) => other.win(self, ELO_K),
             _ => self.draw(other)
         }
+        moves
     }
 }
 
 
 
-fn play_once(players: [&dyn PlayerController; 2], max_moves: usize) -> Option<usize> {
+fn play_once(players: [&dyn PlayerController; 2], max_moves: usize) -> (Option<usize>, usize) {
     let mut board = Board::new();
 
     let mut index = thread_rng().gen_range(0, 2);
@@ -108,12 +111,17 @@ fn play_once(players: [&dyn PlayerController; 2], max_moves: usize) -> Option<us
     };
     assert!(colors[index] == Color::White);
     
-
-    for _moves in 0..max_moves {
+    let mut moves = 0;
+    loop {
         let color = colors[index];
 
         if !board.has_king(color) {
             break;
+        }
+
+        moves += 1;
+        if moves >= max_moves {
+            return (None, max_moves);
         }
 
         if let Some(m) = players[index].play(color, &board) {
@@ -135,5 +143,6 @@ fn play_once(players: [&dyn PlayerController; 2], max_moves: usize) -> Option<us
 
     let winner = 1 - index;
     debug_assert!(board.has_king(colors[winner]));
-    Some(winner)
+
+    (Some(winner), moves)
 }
