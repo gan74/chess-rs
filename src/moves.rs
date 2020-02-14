@@ -5,11 +5,13 @@ use crate::pos::*;
 use std::cmp;
 
 pub struct PossibleMoveIterator<'a> {
+    src_index: usize,
+    dst_index: usize,
+
     board: &'a Board,
     allies: BitBoard,
     enemies: BitBoard,
     dst_board: BitBoard,
-    index: usize
 }
 
 impl<'a> PossibleMoveIterator<'a> {
@@ -17,11 +19,12 @@ impl<'a> PossibleMoveIterator<'a> {
         let allies = board.pieces(color);
         let enemies = board.pieces(color.inverse());
         let mut it = PossibleMoveIterator {
+            src_index: 0,
+            dst_index: 0,
             board: board,
             allies: allies,
             enemies: enemies,
             dst_board: BitBoard::empty(),
-            index: 0
         };
         it.recompute_dst();
         it
@@ -29,34 +32,30 @@ impl<'a> PossibleMoveIterator<'a> {
 
     #[inline(always)]
     fn at_end(&self) -> bool {
-        !(self.index < 64 * 64)
+        !(self.src_index < 64)
     }
 
     #[inline(always)]
     fn advance(&mut self) {
-        debug_assert!(!self.at_end());
-        loop {
-            self.index += 1;
-            if !self.at_end() && self.index % 64 == 0 {
+        assert!(self.dst_index < 64);
+        if self.dst_index == 63 {
+            self.src_index += 1;
+            self.dst_index = 0;
+            if !self.at_end() {
                 self.recompute_dst();
-                if self.dst_board.is_empty() {
-                    continue;
-                }
             }
-            break;
+        } else {
+             self.dst_index += 1;
         }
+       
     }
 
     fn recompute_dst(&mut self) {
-        let src_pos = Pos::from_index(self.index / 64);
+        let src_pos = Pos::from_index(self.src_index);
         self.dst_board = {
-            if self.allies.piece_at(src_pos) {
-                match self.board.piece_at(src_pos) {
-                    Some(piece) => possible_moves_internal(self.allies, self.enemies, piece, src_pos),
-                    _ => BitBoard::empty()
-                }
-            } else {
-                BitBoard::empty()
+            match self.board.piece_at(src_pos) {
+                Some(piece) if self.allies.piece_at(src_pos) => possible_moves_internal(self.allies, self.enemies, piece, src_pos),
+                _ => BitBoard::empty()
             }
         };
     }
@@ -69,13 +68,12 @@ impl<'a> Iterator for PossibleMoveIterator<'a> {
     #[inline(always)]
     fn next(&mut self) -> Option<Self::Item> {
         while !self.at_end() {
-            let dst_pos = Pos::from_index(self.index % 64);
-            let src_pos = Pos::from_index(self.index / 64);
-            if self.dst_board.piece_at(dst_pos) {
-                self.advance();
+            let dst_pos = Pos::from_index(self.dst_index);
+            let src_pos = Pos::from_index(self.src_index);
+            let valid = self.dst_board.piece_at(dst_pos);
+            self.advance();
+            if valid {
                 return Some(Move(src_pos, dst_pos))
-            } else {
-                self.advance();
             }
         }
         None
@@ -109,6 +107,7 @@ fn possible_moves_for_piece(board: &Board, colored: ColoredPiece, pos: Pos) -> B
     
     possible_moves_internal(allies, enemies, colored, pos)
 }
+
 
 fn possible_moves_internal(allies: BitBoard, enemies: BitBoard, colored: ColoredPiece, pos: Pos) -> BitBoard {
     if colored.is_empty() {

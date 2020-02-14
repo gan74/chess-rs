@@ -1,12 +1,14 @@
 use std::fmt;
 use std::str::FromStr;
 
+type IndexType = u8;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Move(pub Pos, pub Pos);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Pos {
-    i: u8
+    i: IndexType
 }
 
 
@@ -15,14 +17,14 @@ impl Pos {
         debug_assert!(x < 8);
         debug_assert!(y < 8);
         Pos {
-            i: (x + y * 8) as u8
+            i: (x + y * 8) as IndexType
         }
     }
 
     pub fn from_index(index: usize) -> Pos {
         debug_assert!(index < 64);
         Pos {
-            i: index as u8
+            i: index as IndexType
         }
     }
 
