@@ -4,7 +4,7 @@ use crate::pos::*;
 
 use std::fmt;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct Board {
     board: [ColoredPiece; 64]
 }

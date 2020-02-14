@@ -29,7 +29,7 @@ impl<'a> PossibleMoveIterator<'a> {
 
     #[inline(always)]
     fn at_end(&self) -> bool {
-        self.index == 64 * 64
+        !(self.index < 64 * 64)
     }
 
     #[inline(always)]
@@ -53,7 +53,7 @@ impl<'a> PossibleMoveIterator<'a> {
             if self.allies.piece_at(src_pos) {
                 match self.board.piece_at(src_pos) {
                     Some(piece) => possible_moves_internal(self.allies, self.enemies, piece, src_pos),
-                    _ => unreachable!()
+                    _ => BitBoard::empty()
                 }
             } else {
                 BitBoard::empty()

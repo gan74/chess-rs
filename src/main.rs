@@ -20,8 +20,9 @@ fn play_once(players: &[Box<dyn PlayerController>; 2], max_moves: usize) -> Opti
     let mut board = Board::new();
     let mut color = Color::White;
 
-    for _ in 0..max_moves {
+    for _moves in 0..max_moves {
         if !board.has_king(color) {
+            //println!("{}", _moves);
             break;
         }
 
