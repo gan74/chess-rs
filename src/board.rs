@@ -2,6 +2,11 @@ use crate::piece::*;
 use crate::pos::*;
 
 use std::fmt;
+use std::io;
+
+use std::io::Write;
+
+
 
 #[derive(Clone)]
 pub struct Board {
@@ -74,6 +79,16 @@ impl Board {
         board.board[mov.1.index()] = board.board[mov.0.index()];
         board.board[mov.0.index()] = Piece::none();
         board
+    }
+
+    pub fn san<T: Write>(&self, writer: &mut T, mov: Move) -> io::Result<()> {
+        let piece = self.piece_at(mov.0).unwrap();
+        let capture = if self.piece_at(mov.1).is_some() { "x" } else { "" };
+        if piece.kind == PieceKind::Pawn {
+            write!(writer, "{}{}{}", mov.0, capture, mov.1)
+        } else {
+            write!(writer, "{}{}{}{}", piece.kind.to_char().to_ascii_uppercase(), mov.0, capture, mov.1)
+        }
     }
 }
 

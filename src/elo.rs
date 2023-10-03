@@ -4,6 +4,8 @@ use crate::piece::*;
 
 use rand::{thread_rng, Rng};
 
+
+
 const ELO_STARTING_SCORE : i64 = 1200;
 const ELO_K : f64 = 1.0;
 const MAX_MOVES : usize = 100;
@@ -126,7 +128,7 @@ fn play_once(players: [&dyn PlayerController; 2], max_moves: usize) -> (Option<u
 
         if let Some(m) = players[index].play(color, &board) {
             board = board.with_move(m);
-            // println!("{}\n{}", m, board);
+            println!("{}\n{}", m, board);
             index = 1 - index;
         } else {
             break;

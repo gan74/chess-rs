@@ -3,6 +3,8 @@ use crate::pos::*;
 use std::fmt;
 use std::ops;
 
+
+
 #[derive(Debug, Clone, Copy)]
 pub struct BitBoard {
     board: u64,

@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![allow(unused_imports)]
 
 extern crate rand;
 extern crate indicatif;
@@ -20,8 +21,12 @@ use crate::elo::*;
 use crate::player::*;
 
 
-use std::str::FromStr;
+use std::fmt;
 use std::cmp;
+use std::io;
+
+use std::str::FromStr;
+use std::io::Write;
 
 use std::time::{Instant, Duration};
 use rand::{thread_rng, Rng};
@@ -30,7 +35,63 @@ use indicatif::ProgressIterator;
 
 
 
-const GAMES: usize = 50000;
+fn record_game<T: Write>(players: [&dyn PlayerController; 2], max_moves: usize, writer: &mut T) -> io::Result<()> {
+    let mut board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
+
+    let mut index = thread_rng().gen_range(0, 2);
+    let colors = if index == 1 {
+        [PieceColor::Black, PieceColor::White]
+    } else {
+        [PieceColor::White, PieceColor::Black]
+    };
+    assert!(colors[index] == PieceColor::White);
+    
+    let mut moves = 0;
+
+    write!(writer, "1. ")?;
+    loop {
+        let color = colors[index];
+
+        if !board.has_king(color) {
+            break;
+        }
+
+        moves += 1;
+        if moves >= max_moves {
+            return Ok(());
+        }
+
+        if let Some(m) = players[index].play(color, &board) {
+            board.san(writer, m)?;
+            write!(writer, " ")?;
+
+            board = board.with_move(m);
+            index = 1 - index;
+        } else {
+            break;
+        }
+    };
+
+    let winner = 1 - index;
+    assert!(board.has_king(colors[winner]));
+
+    Ok(())
+}
+
+
+fn main() {
+    let mut players = Vec::new();
+    players.push(RandomAI::new());
+    players.push(RandomAI::new());
+
+
+    record_game([&players[0], &players[1]], 100, &mut std::io::stdout()).unwrap();
+}
+
+
+
+
+/*const GAMES: usize = 50000;
 
 fn gen_player_indexes(player_count: usize) -> (usize, usize) {
     assert!(player_count > 1);
@@ -82,8 +143,10 @@ fn main() {
     for player in players {
         println!("\n{}", player.name());
         println!("  elo: {}", player.elo_score().round() as i64);
-        println!("  games: (w: {}, l: {}, d: {})", player.victories, player.loses, player.draws);
+        println!("  games: (w: {}, d: {}, l: {})", player.victories, player.draws, player.loses);
         total += player.victories + player.loses + player.draws;
     }
     assert!(total == GAMES * 2);
-}
+}*/
+
+

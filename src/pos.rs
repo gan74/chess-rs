@@ -1,6 +1,7 @@
 use std::fmt;
 use std::str::FromStr;
 
+
 type IndexType = u8;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -47,12 +48,16 @@ impl Pos {
     pub fn row(&self) -> i32 {
         (self.i % 8) as _
     }
+
+    pub fn file_symbol(&self) -> char {
+        ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'][self.col() as usize]
+    }
 }
 
 
 impl fmt::Display for Pos {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}{}", ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'][self.row() as usize], self.col() + 1)
+        write!(f, "{}{}", self.file_symbol(), self.row() + 1)
     }
 }
 
