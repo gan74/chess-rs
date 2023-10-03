@@ -3,23 +3,32 @@
 extern crate rand;
 extern crate indicatif;
 
-mod elo;
 mod pos;
+mod moves;
+mod piece;
 mod board;
 mod bitboard;
-mod piece;
-mod moves;
 mod player;
-mod ai;
+mod elo;
 
-use elo::*;
-use ai::*;
+use crate::board::*;
+use crate::bitboard::*;
+use crate::piece::*;
+use crate::moves::*;
+use crate::pos::*;
+use crate::elo::*;
+use crate::player::*;
 
-use std::time::{Instant, Duration};
+
+use std::str::FromStr;
 use std::cmp;
 
+use std::time::{Instant, Duration};
 use rand::{thread_rng, Rng};
 use indicatif::ProgressIterator;
+
+
+
 
 const GAMES: usize = 50000;
 
@@ -42,10 +51,8 @@ fn per_second(n: usize, time: Duration) -> f64 {
 
 fn main() {
     let mut players = Vec::new();
-    players.push(EloPlayer::new(RandomAI::new(true)));
-    players.push(EloPlayer::new(FirstMoveAI::new()));
-    players.push(EloPlayer::new(SwarmAI::new()));
-    players.push(EloPlayer::new(CaptureAI::new()));
+    players.push(EloPlayer::new(RandomAI::new()));
+    players.push(EloPlayer::new(RandomAI::new()));
 
     let start = Instant::now();
 

@@ -13,11 +13,19 @@ pub struct Pos {
 
 
 impl Pos {
-    pub fn new(x: usize, y: usize) -> Pos {
-        debug_assert!(x < 8);
-        debug_assert!(y < 8);
+    pub fn new(x: i32, y: i32) -> Pos {
+        debug_assert!(x >= 0 && x < 8);
+        debug_assert!(y >= 0 && y < 8);
         Pos {
-            i: (x + y * 8) as IndexType
+            i: (x * 8 + y) as IndexType
+        }
+    }
+
+    pub fn try_new(x: i32, y: i32) -> Option<Pos> {
+        if x >= 0 && x < 8 && y >= 0 && y < 8 {
+            Some(Pos::new(x, y))
+        } else {
+            None
         }
     }
 
@@ -29,22 +37,22 @@ impl Pos {
     }
 
     pub fn index(&self) -> usize {
-        self.i as usize
+        self.i as _
     }
 
-    pub fn col(&self) -> usize {
-        (self.i % 8) as usize
+    pub fn col(&self) -> i32 {
+        (self.i / 8) as _
     }
 
-    pub fn row(&self) -> usize {
-        (self.i / 8) as usize
+    pub fn row(&self) -> i32 {
+        (self.i % 8) as _
     }
 }
 
 
 impl fmt::Display for Pos {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}{}", ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'][self.row()], self.col() + 1)
+        write!(f, "{}{}", ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'][self.row() as usize], self.col() + 1)
     }
 }
 
@@ -66,7 +74,7 @@ impl FromStr for Pos {
                 if let Some(col) = "abcdefgh".find(c) {
                     if let Some(row) = "12345678".find(r) {
                         if chars.next().is_none() {
-                            return Ok(Pos::new(col, row));
+                            return Ok(Pos::new(col as _, row as _));
                         }
                     }
                 }

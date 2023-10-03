@@ -1,121 +1,127 @@
 
 use std::fmt;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Piece {
-    Empty,
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum PieceKind {
+    None,
     Pawn,
     Rook,
     Knight,
     Bishop,
     Queen,
-    King
+    King,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Color {
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum PieceColor {
+    White,
     Black,
-    White
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ColoredPiece {
-    pub piece: Piece,
-    pub color: Color
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct Piece {
+    pub kind: PieceKind,
+    pub color: PieceColor,
 }
 
-impl Piece {
-    pub fn char_for_piece(&self) -> char {
+
+impl PieceKind {
+    pub fn to_char(&self) -> char {
         match self {
-            Piece::Empty => '.',
-            Piece::Pawn => 'p',
-            Piece::Rook => 'r',
-            Piece::Knight => 'n',
-            Piece::Bishop => 'b',
-            Piece::Queen => 'q',
-            Piece::King => 'k'
+            &PieceKind::None => '.',
+            &PieceKind::Pawn => 'p',
+            &PieceKind::Rook => 'r',
+            &PieceKind::Knight => 'n',
+            &PieceKind::Bishop => 'b',
+            &PieceKind::Queen => 'q',
+            &PieceKind::King => 'k',
+        }
+    }
+
+    pub fn from_char(c: char) -> PieceKind {
+        match c.to_ascii_lowercase() {
+            'p' => PieceKind::Pawn,
+            'r' => PieceKind::Rook,
+            'n' => PieceKind::Knight,
+            'b' => PieceKind::Bishop,
+            'q' => PieceKind::Queen,
+            'k' => PieceKind::King,
+            _ => PieceKind::None,
         }
     }
 
     pub fn score(&self) -> i64 {
         match self {
-            Piece::Empty => 0,
-            Piece::Pawn => 1,
-            Piece::Rook => 5,
-            Piece::Knight => 3,
-            Piece::Bishop => 3,
-            Piece::Queen => 10,
-            Piece::King => 64 * 10 + 1
+            &PieceKind::None => 0,
+            &PieceKind::Pawn => 1,
+            &PieceKind::Rook => 5,
+            &PieceKind::Knight => 3,
+            &PieceKind::Bishop => 3,
+            &PieceKind::Queen => 10,
+            &PieceKind::King => 64 * 10 + 1,
         }
-    }
-     
-    pub fn colored(&self, col: Color) -> ColoredPiece {
-        ColoredPiece {
-            piece: *self,
-            color: col
-        }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        *self == Piece::Empty
     }
 }
 
-impl Color {
-    pub fn inverse(&self) -> Color {
+impl PieceColor {
+    pub fn opponent(&self) -> PieceColor {
         match self {
-            Color::Black => Color::White,
-            Color::White => Color::Black
-        }
-    }
-
-    pub fn index(&self) -> usize {
-        match self {
-            Color::Black => 0,
-            Color::White => 1
+            PieceColor::White => PieceColor::Black,
+            PieceColor::Black => PieceColor::White,
         }
     }
 }
 
-impl ColoredPiece {
-    pub fn empty() -> ColoredPiece {
-        ColoredPiece {
-            piece: Piece::Empty,
-            color: Color::Black
+
+impl Piece {
+    pub fn none() -> Piece {
+        Piece {
+            kind: PieceKind::None,
+            color: PieceColor::White,
         }
     }
 
-    pub fn char_for_piece(&self) -> char {
-        let c = self.piece.char_for_piece();
-        match self.color {
-            Color::Black => c,
-            Color::White => c.to_uppercase().next().unwrap_or(Piece::Empty.char_for_piece())
+    pub fn new(kind: PieceKind, color: PieceColor) -> Piece {
+        Piece {
+            kind: kind,
+            color: color,
         }
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.piece.is_empty()
+    pub fn is_none(&self) -> bool {
+        self.kind == PieceKind::None
+    }
+
+    pub fn to_char(&self) -> char {
+        let c = self.kind.to_char();
+        if self.color == PieceColor::White {
+            c.to_ascii_uppercase()
+        } else {
+            c
+        }
+    }
+
+    pub fn from_char(c: char) -> Piece {
+        Piece::new(PieceKind::from_char(c), if c.is_ascii_uppercase() { PieceColor::White } else { PieceColor::Black })
     }
 }
+
+
 
 
 impl fmt::Display for Piece {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.char_for_piece())
+        write!(f, "{}", self.to_char())
     }
 }
 
-impl fmt::Display for Color {
+
+impl fmt::Display for PieceColor {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Color::Black => write!(f, "Black"),
-            Color::White => write!(f, "White")
+            PieceColor::White => write!(f, "White"),
+            PieceColor::Black => write!(f, "Black"),
         }
-    }
-}
-
-impl fmt::Display for ColoredPiece {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.char_for_piece())
+        
     }
 }

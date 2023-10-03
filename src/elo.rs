@@ -101,15 +101,15 @@ impl EloPlayer {
 
 
 fn play_once(players: [&dyn PlayerController; 2], max_moves: usize) -> (Option<usize>, usize) {
-    let mut board = Board::new();
+    let mut board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
 
     let mut index = thread_rng().gen_range(0, 2);
     let colors = if index == 1 {
-        [Color::Black, Color::White]
+        [PieceColor::Black, PieceColor::White]
     } else {
-        [Color::White, Color::Black]
+        [PieceColor::White, PieceColor::Black]
     };
-    assert!(colors[index] == Color::White);
+    assert!(colors[index] == PieceColor::White);
     
     let mut moves = 0;
     loop {
@@ -125,17 +125,9 @@ fn play_once(players: [&dyn PlayerController; 2], max_moves: usize) -> (Option<u
         }
 
         if let Some(m) = players[index].play(color, &board) {
-            match board.try_move(m) {
-                Ok(b) => {
-                    board = b;
-                    index = 1 - index;
-                }
-
-                Err(_) => {
-                    println!("Invalid move ({}).", color);
-                    break;
-                }
-            }
+            board = board.with_move(m);
+            // println!("{}\n{}", m, board);
+            index = 1 - index;
         } else {
             break;
         }
@@ -143,6 +135,5 @@ fn play_once(players: [&dyn PlayerController; 2], max_moves: usize) -> (Option<u
 
     let winner = 1 - index;
     debug_assert!(board.has_king(colors[winner]));
-
     (Some(winner), moves)
 }
