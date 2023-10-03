@@ -142,12 +142,18 @@ pub fn generate_moves(board: &Board, color: PieceColor) -> MoveSet {
                     PieceColor::Black => (-1, py != 6),
                 };
                 if let Some(pos) = Pos::try_new(px, py + dir) {
-                    dst_board += pos;
-                    dst_board += dst_board.shift_left().intersect(enemies);
-                    dst_board += dst_board.shift_right().intersect(enemies);
-                    if !moved {
-                        if let Some(pos) = Pos::try_new(px, py + dir + dir) {
-                            dst_board += pos;
+                    let adv = dst_board + pos;
+                    dst_board += adv.shift_left().intersect(enemies);
+                    dst_board += adv.shift_right().intersect(enemies);
+                    
+                    if !all_pieces.contains(pos) {
+                        dst_board += pos;
+                        if !moved {
+                            if let Some(pos) = Pos::try_new(px, py + dir + dir) {
+                                if !all_pieces.contains(pos) {
+                                    dst_board += pos;
+                                }
+                            }
                         }
                     }
                 }
