@@ -102,7 +102,7 @@ fn main() {
 
 
 
-const GAMES: usize = 100;
+const GAMES: usize = 50;
 
 fn gen_player_indexes(player_count: usize) -> (usize, usize) {
     assert!(player_count > 1);

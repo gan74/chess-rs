@@ -140,21 +140,19 @@ impl TreeSearchAI {
     const WIN_SCORE: i64 = 10000;
 
     fn eval(board: Board, depth: usize) -> i64 {
-        let signed_value = board.to_move().signed_value();
-
         if depth == 0 {
             return board.pieces_for(board.to_move())
                 .set_positions()
-                .map(|p| board.piece_at(p).kind.score()).sum::<i64>() * signed_value;
+                .map(|p| board.piece_at(p).kind.score()).sum::<i64>();
         }
 
         let moves = generate_pseudo_legal_moves(&board);
         let enemy_king_pos = board.king_pos(board.to_move().opponent());
 
         if moves.is_empty() {
-            -Self::WIN_SCORE * signed_value
+            -Self::WIN_SCORE
         } else if moves.all_dst_positions().contains(enemy_king_pos) {
-            Self::WIN_SCORE * signed_value
+            Self::WIN_SCORE
         } else { 
             moves.moves().map(|mov| -Self::eval(board.play(mov), depth - 1)).max().unwrap()
         }
@@ -170,7 +168,7 @@ impl PlayerController for TreeSearchAI {
     fn play<'a>(&self, moves: &'a MoveSet) -> Option<Move<'a>> {
         moves.moves().max_by_key(|mov| {
             let board = mov.parent_board().play(*mov);
-            Self::eval(board, self.0) * mov.parent_board().to_move().signed_value()
+            -Self::eval(board, self.0)
         })
     }
 }
