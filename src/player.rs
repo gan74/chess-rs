@@ -15,7 +15,7 @@ use rand::{thread_rng, Rng};
 
 
 
-pub trait PlayerController {
+pub trait PlayerController : Sync + Send {
     fn name(&self) -> String;
     fn play<'a>(&self, moves: &'a MoveSet) -> Option<Move<'a>>;
 }
@@ -92,18 +92,24 @@ impl PlayerController for CaptureAI {
 
 pub struct MonteCarloAI(pub usize);
 
-
 impl MonteCarloAI {
-    fn search<R: RngCore>(board: &Board, rng: &mut R) -> bool {
+    fn search<R: RngCore>(board: &Board, rng: &mut R, depth: i64) -> i64 {
         let enemy_king_pos = board.king_pos(board.to_move().opponent());
         let moves = generate_pseudo_legal_moves(&board);
 
-        if moves.all_dst_positions().contains(enemy_king_pos) {
-            true 
+        let score = {
+            let cap = 20;
+            cap / cmp::min(cap, depth)  
+        };
+
+        if moves.is_empty() {
+            -score
+        } else if moves.all_dst_positions().contains(enemy_king_pos) {
+            score
         } else {
             let move_count = moves.moves().count();
             let mov = moves.moves().nth(rng.gen_range(0, move_count)).unwrap();
-            !Self::search(&board.play(mov), rng)
+            -Self::search(&board.play(mov), rng, depth + 1)
         }
     }
 }
@@ -120,12 +126,52 @@ impl PlayerController for MonteCarloAI {
             let board = board.play(*mov);
             (0..self.0).into_par_iter().map(|_| {
                 let mut rng = thread_rng();
-                if Self::search(&board, &mut rng) { 
-                    0 
-                } else { 
-                    1 
-                }
-            }).sum::<usize>()
+                -Self::search(&board, &mut rng, 1)
+            }).sum::<i64>()
+        })
+    }
+}
+
+
+
+
+pub struct TreeSearchAI(pub usize);
+
+impl TreeSearchAI {
+    const WIN_SCORE: i64 = 10000;
+
+    fn eval(board: Board, depth: usize) -> i64 {
+        let signed_value = board.to_move().signed_value();
+
+        if depth == 0 {
+            return board.pieces_for(board.to_move())
+                .set_positions()
+                .map(|p| board.piece_at(p).kind.score()).sum::<i64>() * signed_value;
+        }
+
+        let moves = generate_pseudo_legal_moves(&board);
+        let enemy_king_pos = board.king_pos(board.to_move().opponent());
+
+        if moves.is_empty() {
+            -Self::WIN_SCORE * signed_value
+        } else if moves.all_dst_positions().contains(enemy_king_pos) {
+            Self::WIN_SCORE * signed_value
+        } else { 
+            moves.moves().map(|mov| -Self::eval(board.play(mov), depth - 1)).max().unwrap()
+        }
+
+    }
+}
+
+impl PlayerController for TreeSearchAI {
+    fn name(&self) -> String {
+        format!("TreeSearch({})", self.0)
+    }
+
+    fn play<'a>(&self, moves: &'a MoveSet) -> Option<Move<'a>> {
+        moves.moves().max_by_key(|mov| {
+            let board = mov.parent_board().play(*mov);
+            Self::eval(board, self.0) * mov.parent_board().to_move().signed_value()
         })
     }
 }
