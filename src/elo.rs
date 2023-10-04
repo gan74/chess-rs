@@ -4,6 +4,7 @@ use crate::piece::*;
 use crate::moves::*;
 
 use rand::{thread_rng, Rng};
+use std::sync::{Arc, Mutex};
 
 
 
@@ -12,19 +13,24 @@ const ELO_K : f64 = 1.0;
 const MAX_MOVES : usize = 100;
 
 
-#[derive(Debug, Clone, Copy)]
-pub struct Elo {
+#[derive(Debug, Clone)]
+struct Elo {
     score: f64
 }
 
-
-pub struct EloPlayer {
-    controller: Box<dyn PlayerController>,
+#[derive(Debug, Clone)]
+pub struct History {
     elo: Elo,
 
     pub victories: usize,
     pub loses: usize,
     pub draws: usize,
+}
+
+
+pub struct EloPlayer {
+    controller: Box<dyn PlayerController>,
+    pub history: Mutex<History>,
 }
 
 
@@ -39,7 +45,7 @@ impl Elo {
     }
 
     pub fn win(&mut self, other: &mut Elo, k: f64) {
-        let diff = k * (1.0 - self.win_probability(*other));
+        let diff = k * (1.0 - self.win_probability(other));
         self.score += diff;
         other.score -= diff;
     }
@@ -49,7 +55,7 @@ impl Elo {
     }
 
 
-    fn win_probability(&self, other: Elo) -> f64 {
+    fn win_probability(&self, other: &Elo) -> f64 {
         let p0 = 1.0 / (1.0 + 10.0_f64.powf((other.score - self.score) / 400.0));
         debug_assert!(p0 >= 0.0);
         debug_assert!(p0 <= 1.0);
@@ -57,16 +63,36 @@ impl Elo {
     }
 }
 
+impl History {
+    pub fn elo_score(&self) -> f64 {
+        self.elo.score
+    }
+
+    pub fn win(&mut self, other: &mut History, k: f64) {
+        self.elo.win(&mut other.elo, k);
+        self.victories += 1;
+        other.loses += 1;
+    }
+
+    pub fn draw(&mut self, other: &mut History) {
+        self.draws += 1;
+        other.draws += 1;
+    }
+}
 
 impl EloPlayer {
-    pub fn new<T: 'static + PlayerController>(player: T) -> EloPlayer {
+    pub fn new<T: PlayerController + 'static>(player: T) -> EloPlayer {
         EloPlayer {
             controller: Box::new(player),
-            elo: Elo::new(),
+            history: Mutex::new(
+                History {
+                    elo: Elo::new(),
 
-            victories: 0,
-            loses: 0,
-            draws: 0,
+                    victories: 0,
+                    loses: 0,
+                    draws: 0,
+                }
+            ),
         }
     }
 
@@ -74,28 +100,21 @@ impl EloPlayer {
         self.controller.name()
     }
 
-    pub fn elo_score(&self) -> f64 {
-        self.elo.score
+    pub fn history(&self) -> History {
+        self.history.lock().unwrap().clone()
     }
 
-    pub fn win(&mut self, other: &mut EloPlayer, k: f64) {
-        self.elo.win(&mut other.elo, k);
-        self.victories += 1;
-        other.loses += 1;
-    }
-
-    pub fn draw(&mut self, other: &mut EloPlayer) {
-        self.draws += 1;
-        other.draws += 1;
-    }
-
-    pub fn play_once(&mut self, other: &mut EloPlayer) -> usize {
+    pub fn play_once(&self, other: &EloPlayer) -> usize {
         let players = [&(*self.controller), &(*other.controller)];
         let (result, moves) = play_once(players, MAX_MOVES);
-        match result {
-            Some(0) => self.win(other, ELO_K),
-            Some(1) => other.win(self, ELO_K),
-            _ => self.draw(other)
+        {
+            let mut hist_s = self.history.lock().unwrap();
+            let mut hist_o = other.history.lock().unwrap();
+            match result {
+                Some(0) => hist_s.win(&mut hist_o, ELO_K),
+                Some(1) => hist_o.win(&mut hist_s, ELO_K),
+                _ => hist_s.draw(&mut hist_o),
+            }
         }
         moves
     }

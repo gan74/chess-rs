@@ -78,6 +78,13 @@ impl Color {
             Color::Black => 1,
         }
     }
+
+    pub fn signed_value(&self) -> i64 {
+        match self {
+            Color::White => 1,
+            Color::Black => -1,
+        }
+    }
 }
 
 

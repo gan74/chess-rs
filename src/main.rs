@@ -20,6 +20,7 @@ use crate::pos::*;
 use crate::elo::*;
 use crate::player::*;
 
+use rayon::prelude::*;
 
 use std::fmt;
 use std::cmp;
@@ -30,7 +31,7 @@ use std::io::Write;
 
 use std::time::{Instant, Duration};
 use rand::{thread_rng, Rng};
-use indicatif::ProgressIterator;
+use indicatif::{ProgressIterator, ParallelProgressIterator};
 
 
 
@@ -101,7 +102,7 @@ fn main() {
 
 
 
-const GAMES: usize = 1_000;
+const GAMES: usize = 100;
 
 fn gen_player_indexes(player_count: usize) -> (usize, usize) {
     assert!(player_count > 1);
@@ -121,27 +122,23 @@ fn per_second(n: usize, time: Duration) -> f64 {
 }
 
 fn main() {
-    let mut players = Vec::new();
-    //players.push(EloPlayer::new(RandomAI()));
-    //players.push(EloPlayer::new(CaptureAI{search_check: false}));
-    players.push(EloPlayer::new(CaptureAI{search_check: true}));
-    players.push(EloPlayer::new(MonteCarloAI(1000)));
+    let players = vec![
+        EloPlayer::new(RandomAI()),
+        EloPlayer::new(TreeSearchAI(3)),
+    ];
 
     let start = Instant::now();
 
     println!("Simulating:");
 
-    let mut moves = 0;
-    for _ in (0..GAMES).progress() {
+    let moves = (0..GAMES).into_par_iter().progress().map(|_| {
         let (a, b) = gen_player_indexes(players.len());
         let (first, second) = (cmp::min(a, b), cmp::max(a, b));
         assert!(a != b);
 
-        let (pa, pb) = players.split_at_mut(second);
-        let pa: &mut EloPlayer = &mut pa[first];
-        let pb: &mut EloPlayer = &mut pb[0];
-        moves += pa.play_once(pb);
-    }
+        let (pa, pb) = players.split_at(second);
+        pa[first].play_once(&pb[0])
+    }).sum::<usize>();
 
     let end = Instant::now();
     let time = end.duration_since(start);
@@ -151,10 +148,11 @@ fn main() {
 
     let mut total = 0;
     for player in players {
+        let history = player.history();
         println!("\n{}", player.name());
-        println!("  elo: {}", player.elo_score().round() as i64);
-        println!("  games: (w: {}, d: {}, l: {})", player.victories, player.draws, player.loses);
-        total += player.victories + player.loses + player.draws;
+        println!("  elo: {}", history.elo_score().round() as i64);
+        println!("  games: (w: {}, d: {}, l: {})", history.victories, history.draws, history.loses);
+        total += history.victories + history.loses + history.draws;
     }
     assert!(total == GAMES * 2);
 }

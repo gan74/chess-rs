@@ -4,7 +4,6 @@ use crate::moves::*;
 use crate::pos::*;
 
 use rand::prelude::*;
-use rayon::prelude::*;
 
 use std::cmp;
 use std::io;
@@ -124,7 +123,7 @@ impl PlayerController for MonteCarloAI {
 
         moves.moves().max_by_key(|mov| {
             let board = board.play(*mov);
-            (0..self.0).into_par_iter().map(|_| {
+            (0..self.0).into_iter().map(|_| {
                 let mut rng = thread_rng();
                 -Self::search(&board, &mut rng, 1)
             }).sum::<i64>()
