@@ -179,46 +179,59 @@ pub struct AlphaBetaAI(pub usize);
 impl AlphaBetaAI {
     const WIN_SCORE: i64 = 10000;
 
-    fn eval(board: Board, depth: usize, mut alpha: i64, beta: i64) -> i64 {
+    fn eval(board: Board, depth: usize, mut alpha: i64, mut beta: i64, is_max_player: bool) -> i64 {
+        let sign = if is_max_player { 1 } else { -1 };
         if depth == 0 {
             return board.pieces_for(board.to_move())
                 .set_positions()
-                .map(|p| board.piece_at(p).kind.score()).sum::<i64>();
+                .map(|p| board.piece_at(p).kind.score()).sum::<i64>() * sign;
         }
 
         let moves = generate_pseudo_legal_moves(&board);
-        let enemy_king_pos = board.king_pos(board.to_move().opponent());
-
         if moves.is_empty() {
-            -Self::WIN_SCORE
-        } else if moves.all_dst_positions().contains(enemy_king_pos) {
-            Self::WIN_SCORE
-        } else { 
+            return -Self::WIN_SCORE * sign;
+        }
+
+
+        let enemy_king_pos = board.king_pos(board.to_move().opponent());
+        if moves.all_dst_positions().contains(enemy_king_pos) {
+            return Self::WIN_SCORE * sign;
+        }
+
+
+        if is_max_player {
             let mut best = i64::MIN;
             for mov in moves.moves() {
-                let v = -Self::eval(board.play(mov), depth - 1, -beta, -alpha);
-                best = cmp::max(best, v);
-                alpha = cmp::max(alpha, v);
-                if alpha > beta {
+                best = cmp::max(best, Self::eval(board.play(mov), depth - 1, alpha, beta, false));
+                alpha = cmp::max(alpha, best);
+                if best >= beta {
                     break
                 }
             }
-
+            best
+        } else {
+            let mut best = i64::MAX;
+            for mov in moves.moves() {
+                best = cmp::min(best, Self::eval(board.play(mov), depth - 1, alpha, beta, true));
+                beta = cmp::min(beta, best);
+                if best <= alpha {
+                    break
+                }
+            }
             best
         }
-
     }
 }
 
 impl PlayerController for AlphaBetaAI {
     fn name(&self) -> String {
-        format!("TreeSearchV2({})", self.0)
+        format!("AlphaBeta({})", self.0)
     }
 
     fn play<'a>(&self, moves: &'a MoveSet) -> Option<Move<'a>> {
         moves.moves().max_by_key(|mov| {
             let board = mov.parent_board().play(*mov);
-            -Self::eval(board, self.0, i64::MIN, i64::MAX)
+            Self::eval(board, self.0, i64::MIN, i64::MAX, false)
         })
     }
 }
