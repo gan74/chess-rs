@@ -47,12 +47,18 @@ impl<'a> MoveSet<'a> {
         }
     }
 
+
+
     pub fn move_masks(&self) -> &[MoveMask] {
         &self.masks[0..self.mask_count]
     }
 
     pub fn all_dst_positions(&self) -> BitBoard {
         self.dst_positions
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.mask_count == 0
     }
 
     pub fn moves(&self) -> MoveIterator {

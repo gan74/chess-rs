@@ -122,8 +122,8 @@ fn per_second(n: usize, time: Duration) -> f64 {
 
 fn main() {
     let mut players = Vec::new();
-    players.push(EloPlayer::new(RandomAI()));
-    players.push(EloPlayer::new(CaptureAI{search_check: false}));
+    //players.push(EloPlayer::new(RandomAI()));
+    //players.push(EloPlayer::new(CaptureAI{search_check: false}));
     players.push(EloPlayer::new(CaptureAI{search_check: true}));
     players.push(EloPlayer::new(MonteCarloAI(1000)));
 

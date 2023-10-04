@@ -128,9 +128,13 @@ fn play_once(players: [&dyn PlayerController; 2], max_moves: usize) -> (Option<u
         }
 
         let move_set = generate_pseudo_legal_moves(&board);
-        
+
         if move_set.all_dst_positions().contains(board.king_pos(color.opponent())) {
             index = 1 - index;
+            break;
+        }
+
+        if move_set.is_empty() {
             break;
         }
 
