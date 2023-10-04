@@ -14,7 +14,7 @@ pub enum PieceKind {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub enum PieceColor {
+pub enum Color {
     White,
     Black,
 }
@@ -22,7 +22,7 @@ pub enum PieceColor {
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Piece {
     pub kind: PieceKind,
-    pub color: PieceColor,
+    pub color: Color,
 }
 
 
@@ -64,11 +64,18 @@ impl PieceKind {
     }
 }
 
-impl PieceColor {
-    pub fn opponent(&self) -> PieceColor {
+impl Color {
+    pub fn opponent(&self) -> Color {
         match self {
-            PieceColor::White => PieceColor::Black,
-            PieceColor::Black => PieceColor::White,
+            Color::White => Color::Black,
+            Color::Black => Color::White,
+        }
+    }
+
+    pub fn index(&self) -> usize {
+        match self {
+            Color::White => 0,
+            Color::Black => 1,
         }
     }
 }
@@ -78,11 +85,11 @@ impl Piece {
     pub fn none() -> Piece {
         Piece {
             kind: PieceKind::None,
-            color: PieceColor::White,
+            color: Color::White,
         }
     }
 
-    pub fn new(kind: PieceKind, color: PieceColor) -> Piece {
+    pub fn new(kind: PieceKind, color: Color) -> Piece {
         Piece {
             kind: kind,
             color: color,
@@ -95,7 +102,7 @@ impl Piece {
 
     pub fn to_char(&self) -> char {
         let c = self.kind.to_char();
-        if self.color == PieceColor::White {
+        if self.color == Color::White {
             c.to_ascii_uppercase()
         } else {
             c
@@ -103,7 +110,7 @@ impl Piece {
     }
 
     pub fn from_char(c: char) -> Piece {
-        Piece::new(PieceKind::from_char(c), if c.is_ascii_uppercase() { PieceColor::White } else { PieceColor::Black })
+        Piece::new(PieceKind::from_char(c), if c.is_ascii_uppercase() { Color::White } else { Color::Black })
     }
 }
 
@@ -117,11 +124,11 @@ impl fmt::Display for Piece {
 }
 
 
-impl fmt::Display for PieceColor {
+impl fmt::Display for Color {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            PieceColor::White => write!(f, "White"),
-            PieceColor::Black => write!(f, "Black"),
+            Color::White => write!(f, "White"),
+            Color::Black => write!(f, "Black"),
         }
         
     }

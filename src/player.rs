@@ -14,48 +14,7 @@ use rand::{thread_rng, Rng};
 
 pub trait PlayerController {
     fn name(&self) -> String;
-    fn play(&self, color: PieceColor, board: &Board) -> Option<Move>;
-}
-
-
-
-pub struct HumanPlayer();
-
-impl HumanPlayer {
-    pub fn new() -> HumanPlayer {
-        HumanPlayer {
-        }
-    }
-}
-
-impl PlayerController for HumanPlayer {
-    fn name(&self) -> String {
-        "Human player".to_string()
-    }
-
-    fn play(&self, color: PieceColor, board: &Board) -> Option<Move> {
-        println!("{}", board);
-        println!("{}'s turn:", color);
-        loop {
-            let mut input = String::new();
-            match io::stdin().read_line(&mut input) {
-                Ok(_) => {
-                    if let Some(m) = Move::from_str(&input).ok() {
-                        if let Some(p) = board.piece_at(m.0) {
-                            if p.color == color {
-                                return Some(m);
-                            }
-                        }  
-                        println!("Move is invalid.");
-                    } else {
-                        println!("Move could not be parsed.");
-                    }
-                }
-                
-                Err(_) => ()
-            }
-        }
-    }
+    fn play<'a>(&self, moves: &'a MoveSet) -> Option<Move<'a>>;
 }
 
 
@@ -63,52 +22,56 @@ impl PlayerController for HumanPlayer {
 
 
 
+pub struct RandomAI();
+pub struct CaptureAI();
 
-
-pub struct RandomAI {
-}
-
-impl RandomAI {
-    pub fn new() -> RandomAI {
-        RandomAI {
-        }
-    }
-}
 
 impl PlayerController for RandomAI {
     fn name(&self) -> String {
         "Random".to_string()
     }
 
-    fn play(&self, color: PieceColor, board: &Board) -> Option<Move> {
-        let moves = generate_moves(board, color);
+    fn play<'a>(&self, moves: &'a MoveSet) -> Option<Move<'a>> {
+        let board = moves.parent_board();
+        let enemy_king_pos = board.king_pos(board.to_move().opponent());
 
-        let enemy_king_pos = board.king_pos(color.opponent()).unwrap_or(Pos::from_index(0));
-
-        let mut total = 0;
-        for mask in moves.move_masks() {
-            if mask.dst.contains(enemy_king_pos) {
-                return Some(Move(mask.src, enemy_king_pos));
-            }
-            total += mask.dst.bit_count();
+        if let Some(m) = moves.moves_ending_in(enemy_king_pos).next() {
+            return Some(m);
         }
 
-        match total {
+        match moves.moves().count() {
             0 => None,
             l => {
                 let mut rng = thread_rng();
-                let mut index = rng.gen_range(0, l);
-                for mask in moves.move_masks() {
-                    let bits = mask.dst.bit_count();
-                    if bits <= index {
-                        index -= bits;
-                        continue;
-                    } 
+                let index = rng.gen_range(0, l);
+                moves.moves().nth(index)
+            },
+        }
+    }
+}
 
-                    return Some(Move(mask.src, mask.dst.set_positions().nth(index).unwrap()))
-                }
-                panic!("Invalid move index");
+
+impl PlayerController for CaptureAI {
+    fn name(&self) -> String {
+        "Capture".to_string()
+    }
+
+    fn play<'a>(&self, moves: &'a MoveSet) -> Option<Move<'a>> {
+        let board = moves.parent_board();
+        let captures = moves.opponent_pieces().intersect(moves.all_dst_positions());
+
+        if captures.is_empty() {
+            match moves.moves().count() {
+                0 => None,
+                l => {
+                    let mut rng = thread_rng();
+                    let index = rng.gen_range(0, l);
+                    moves.moves().nth(index)
+                },
             }
+        } else {
+            let best_cap = captures.set_positions().max_by_key(|pos| board.piece_at(*pos).kind.score());
+            best_cap.map(|pos| moves.moves_ending_in(pos).min_by_key(|mov| board.piece_at(mov.src).kind.score())).flatten()
         }
     }
 }

@@ -62,6 +62,8 @@ impl BitBoard {
 
 
 
+
+#[derive(Clone, Copy)]
 pub struct BitBoardIterator {
     board: u64,
 }
@@ -74,13 +76,16 @@ impl Iterator for BitBoardIterator {
         if i == 64 {
             None
         } else {
-            self.board = self.board ^ (1u64 << i);
+            let mask = 1u64 << i;
+            self.board = self.board ^ mask;
             Some(Pos::from_index(i as _))
         }
     }
+
+    fn count(self) -> usize {
+        self.board.count_ones() as _
+    }
 }
-
-
 
 impl<T: Iterator<Item = Pos>> From<T> for BitBoard {
     fn from(value: T) -> Self {
@@ -91,6 +96,11 @@ impl<T: Iterator<Item = Pos>> From<T> for BitBoard {
         board
     }
 }
+
+
+
+
+
 
 
 impl ops::Add<BitBoard> for BitBoard {

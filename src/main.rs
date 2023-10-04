@@ -35,16 +35,26 @@ use indicatif::ProgressIterator;
 
 
 
-fn record_game<T: Write>(players: [&dyn PlayerController; 2], max_moves: usize, writer: &mut T) -> io::Result<()> {
-    let mut board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
+/*fn record_game<T: Write>(players: [&dyn PlayerController; 2], max_moves: usize, writer: &mut T) -> io::Result<()> {
+    let mut board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w");
+
+    /*println!("{}", board);
+    let move_set = generate_pseudo_legal_moves(&board);
+    println!("{} masks", move_set.move_masks().len());
+    for m in move_set.moves() {
+        println!("{}", m.san());
+    }
+
+    board = board.with_move(move_set.moves().next().unwrap());*/
+
 
     let mut index = thread_rng().gen_range(0, 2);
     let colors = if index == 1 {
-        [PieceColor::Black, PieceColor::White]
+        [Color::Black, Color::White]
     } else {
-        [PieceColor::White, PieceColor::Black]
+        [Color::White, Color::Black]
     };
-    assert!(colors[index] == PieceColor::White);
+    assert!(colors[index] == Color::White);
     
     let mut moves = 0;
 
@@ -61,10 +71,9 @@ fn record_game<T: Write>(players: [&dyn PlayerController; 2], max_moves: usize, 
             return Ok(());
         }
 
-        if let Some(m) = players[index].play(color, &board) {
-            board.san(writer, m)?;
-            write!(writer, " ")?;
-
+        let move_set = generate_pseudo_legal_moves(&board);
+        if let Some(m) = players[index].play(&move_set) {
+            write!(writer, "{} ", m.san())?;
             board = board.with_move(m);
             index = 1 - index;
         } else {
@@ -86,12 +95,13 @@ fn main() {
 
 
     record_game([&players[0], &players[1]], 100, &mut std::io::stdout()).unwrap();
-}
+}*/
 
 
 
 
-/*const GAMES: usize = 50000;
+
+const GAMES: usize = 100_000;
 
 fn gen_player_indexes(player_count: usize) -> (usize, usize) {
     assert!(player_count > 1);
@@ -112,8 +122,8 @@ fn per_second(n: usize, time: Duration) -> f64 {
 
 fn main() {
     let mut players = Vec::new();
-    players.push(EloPlayer::new(RandomAI::new()));
-    players.push(EloPlayer::new(RandomAI::new()));
+    players.push(EloPlayer::new(RandomAI()));
+    players.push(EloPlayer::new(CaptureAI()));
 
     let start = Instant::now();
 
@@ -147,6 +157,6 @@ fn main() {
         total += player.victories + player.loses + player.draws;
     }
     assert!(total == GAMES * 2);
-}*/
+}
 
 

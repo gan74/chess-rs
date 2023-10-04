@@ -4,8 +4,6 @@ use std::str::FromStr;
 
 type IndexType = u8;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Move(pub Pos, pub Pos);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Pos {
@@ -61,12 +59,6 @@ impl fmt::Display for Pos {
     }
 }
 
-impl fmt::Display for Move {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}{}", self.0, self.1)
-    }
-}
-
 impl FromStr for Pos {
     type Err = ();
 
@@ -93,22 +85,6 @@ impl FromStr for Pos {
     }
 }
 
-impl FromStr for Move {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let s = s.trim_start();
-        if s.len() < 4 {
-            Err(())
-        } else {
-            match (Pos::from_str(&s[0..2]), Pos::from_str(&s[2..])) {
-                (Ok(a), Ok(b)) => Ok(Move(a, b)),
-                _ => Err(())
-            }
-        }
-    }
-}
-
 
 
 #[test]
@@ -120,11 +96,3 @@ fn pos_from_str() {
     assert!(Pos::from_str("e0").is_err());
     
 }
-
-#[test]
-fn move_from_str() {
-    assert_eq!(Move::from_str("a1b1"), Ok(Move(Pos::new(0, 0), Pos::new(1, 0))));
-    assert!(Move::from_str("a1c").is_err());
-    
-}
-

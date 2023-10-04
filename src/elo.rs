@@ -1,6 +1,7 @@
 use crate::player::*;
 use crate::board::*;
 use crate::piece::*;
+use crate::moves::*;
 
 use rand::{thread_rng, Rng};
 
@@ -103,15 +104,15 @@ impl EloPlayer {
 
 
 fn play_once(players: [&dyn PlayerController; 2], max_moves: usize) -> (Option<usize>, usize) {
-    let mut board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
+    let mut board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w");
 
     let mut index = thread_rng().gen_range(0, 2);
     let colors = if index == 1 {
-        [PieceColor::Black, PieceColor::White]
+        [Color::Black, Color::White]
     } else {
-        [PieceColor::White, PieceColor::Black]
+        [Color::White, Color::Black]
     };
-    assert!(colors[index] == PieceColor::White);
+    assert!(colors[index] == Color::White);
     
     let mut moves = 0;
     loop {
@@ -126,9 +127,9 @@ fn play_once(players: [&dyn PlayerController; 2], max_moves: usize) -> (Option<u
             return (None, max_moves);
         }
 
-        if let Some(m) = players[index].play(color, &board) {
+        let move_set = generate_pseudo_legal_moves(&board);
+        if let Some(m) = players[index].play(&move_set) {
             board = board.with_move(m);
-            println!("{}\n{}", m, board);
             index = 1 - index;
         } else {
             break;
@@ -136,6 +137,7 @@ fn play_once(players: [&dyn PlayerController; 2], max_moves: usize) -> (Option<u
     };
 
     let winner = 1 - index;
+
     debug_assert!(board.has_king(colors[winner]));
     (Some(winner), moves)
 }

@@ -3,6 +3,9 @@ use crate::board::*;
 use crate::bitboard::*;
 use crate::piece::*;
 
+use std::fmt;
+
+
 
 #[derive(Debug, Clone, Copy)]
 pub struct MoveMask {
@@ -10,41 +13,178 @@ pub struct MoveMask {
     pub src: Pos,
 }
 
-#[derive(Debug, Clone)]
-pub struct MoveSet {
-    masks: [MoveMask; 32],
-    move_count: usize,
+#[derive(Clone)]
+pub struct MoveSet<'a> {
+    parent: &'a Board,
+
+    masks: [MoveMask; 16],
+    mask_count: usize,
+
+    dst_positions: BitBoard,
+    opponents: BitBoard,
 }
 
-impl MoveSet {
-    pub fn new() -> MoveSet {
+#[derive(Clone)]
+pub struct Move<'a> {
+    parent: &'a MoveSet<'a>,
+
+    pub src: Pos,
+    pub dst: Pos,
+}
+
+
+
+impl<'a> MoveSet<'a> {
+    fn new(board: &Board) -> MoveSet {
         let empty_move_mask = MoveMask {
             dst: BitBoard::empty(),
             src: Pos::new(0, 0),
         };
         MoveSet {
-            masks: [empty_move_mask; 32],
-            move_count: 0,
+            parent: board,
+            masks: [empty_move_mask; 16],
+            mask_count: 0,
+            dst_positions: BitBoard::empty(),
+            opponents: BitBoard::empty(),
         }
-    }
-
-
-    pub fn push(&mut self, mov: MoveMask) {
-        debug_assert!(self.move_count + 1 < self.masks.len());
-        self.masks[self.move_count] = mov;
-        self.move_count += 1;
     }
 
     pub fn move_masks(&self) -> &[MoveMask] {
-        &self.masks[0..self.move_count]
+        &self.masks[0..self.mask_count]
     }
 
-    pub fn dst_positions(&self) -> BitBoard {
-        let mut dst = BitBoard::empty();
-        for mask in self.move_masks() {
-            dst += mask.dst;
+    pub fn all_dst_positions(&self) -> BitBoard {
+        self.dst_positions
+    }
+
+    pub fn opponent_pieces(&self) -> BitBoard {
+        self.opponents
+    }
+
+    pub fn moves(&self) -> MoveIterator {
+        MoveIterator {
+            inner: self.moves_for_mask(0),
         }
-        dst
+    }
+
+    pub fn moves_for_mask(&self, index: usize) -> MoveMaskIterator {
+        debug_assert!(index < self.mask_count);
+        MoveMaskIterator {
+            parent: self,
+            bits: self.masks[index].dst.set_positions(),
+            mask_index: index,
+        }
+    }
+
+    pub fn moves_ending_in<'b>(&'b self, pos: Pos) -> impl Iterator<Item = Move<'b>> {
+        self.masks[0..self.mask_count].iter()
+            .filter(move |mask| mask.dst.contains(pos))
+            .map(move |mask| 
+                Move {
+                    parent: self,
+                    src: mask.src,
+                    dst: pos,
+                }
+            )
+    }
+
+
+    pub fn parent_board(&self) -> &Board {
+        return self.parent
+    }
+
+
+    fn push(&mut self, mov: MoveMask) {
+        debug_assert!(self.mask_count + 1 < self.masks.len());
+        self.masks[self.mask_count] = mov;
+        self.mask_count += 1;
+        self.dst_positions += mov.dst;
+    }
+}
+
+
+impl<'a> Move<'a> {
+    pub fn parent_board(&self) -> &Board {
+        return self.parent.parent
+    }
+
+    pub fn parent_move_set(&self) -> &MoveSet {
+        return self.parent
+    }
+
+    pub fn san(&self) -> SanToken {
+        let board = self.parent_board();
+        let color = board.piece_at(self.src).color;
+        let enemy_king_pos = board.king_pos(color.opponent());
+        SanToken {
+            kind: board.piece_at(self.src).kind,
+            src: self.src,
+            dst: self.dst,
+            is_capture: !board.piece_at(self.dst).is_none(),
+            is_check: generate_pseudo_legal_moves(&board).all_dst_positions().contains(enemy_king_pos),
+        }
+    }
+}
+
+
+
+
+
+#[derive(Clone, Copy)]
+pub struct MoveMaskIterator<'a> {
+    parent: &'a MoveSet<'a>,
+    bits: BitBoardIterator,
+    mask_index: usize,
+}
+
+#[derive(Clone, Copy)]
+pub struct MoveIterator<'a> {
+    inner: MoveMaskIterator<'a>,
+}
+
+impl<'a> Iterator for MoveMaskIterator<'a> {
+    type Item = Move<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.bits.next().map(|dst| 
+            Move {
+                parent: self.parent,
+                src: self.parent.masks[self.mask_index].src,
+                dst: dst,
+            }
+        )
+    }
+
+    fn count(self) -> usize {
+        self.bits.count()
+    }
+}
+
+impl<'a> Iterator for MoveIterator<'a> {
+    type Item = Move<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let m = self.inner.next();
+        if m.is_none() {
+            if self.inner.mask_index < self.inner.parent.mask_count {
+                self.inner.mask_index += 1;
+                self.inner.bits = self.inner.parent.masks[self.inner.mask_index].dst.set_positions();
+                self.next()
+            } else {
+                None
+            }
+        } else {
+            m
+        }
+    }
+
+
+    fn count(self) -> usize {
+        let mut total = self.inner.clone().count();
+        for i in (self.inner.mask_index + 1)..self.inner.parent.mask_count {
+            total += self.inner.parent.masks[i].dst.bit_count();
+        }
+        total
     }
 }
 
@@ -55,14 +195,21 @@ impl MoveSet {
 
 
 
-pub fn generate_moves(board: &Board, color: PieceColor) -> MoveSet {
-    let allies = bitboard_for_color(board, color);
-    let enemies = bitboard_for_color(board, color.opponent());
-    let all_pieces = allies + enemies;
 
-    let mut moves = MoveSet::new();
-    for p in board.pieces().filter(|p| p.1.color == color) {
-        let base_pos = p.0;
+
+
+pub fn generate_pseudo_legal_moves(board: &Board) -> MoveSet {
+    let to_move = board.to_move();
+    let allies = bitboard_for_color(board, to_move);
+    let opponents = bitboard_for_color(board, to_move.opponent());
+    let all_pieces = allies + opponents;
+
+    let mut moves = MoveSet::new(board);
+    moves.opponents = opponents;
+
+    for base_pos in allies.set_positions() {
+        debug_assert!(allies.contains(base_pos));
+        let piece = board.piece_at(base_pos);
         let px = base_pos.col();
         let py = base_pos.row();
 
@@ -133,18 +280,18 @@ pub fn generate_moves(board: &Board, color: PieceColor) -> MoveSet {
 
 
         let mut dst_board = BitBoard::empty();
-        match p.1.kind {
+        match piece.kind {
             PieceKind::None => {},
 
             PieceKind::Pawn => {
-                let (dir, moved) = match p.1.color {
-                    PieceColor::White => ( 1, py != 1),
-                    PieceColor::Black => (-1, py != 6),
+                let (dir, moved) = match piece.color {
+                    Color::White => ( 1, py != 1),
+                    Color::Black => (-1, py != 6),
                 };
                 if let Some(pos) = Pos::try_new(px, py + dir) {
                     let adv = dst_board + pos;
-                    dst_board += adv.shift_left().intersect(enemies);
-                    dst_board += adv.shift_right().intersect(enemies);
+                    dst_board += adv.shift_left().intersect(opponents);
+                    dst_board += adv.shift_right().intersect(opponents);
                     
                     if !all_pieces.contains(pos) {
                         dst_board += pos;
@@ -211,8 +358,61 @@ pub fn generate_moves(board: &Board, color: PieceColor) -> MoveSet {
 }
 
 
+pub fn bitboard_for_color(board: &Board, color: Color) -> BitBoard {
+    BitBoard::from(board.all_pieces().filter(|p| {
+        debug_assert!(!p.1.is_none());
+        p.1.color == color
+    }).map(|p| p.0))
+}
 
 
-fn bitboard_for_color(board: &Board, color: PieceColor) -> BitBoard {
-    BitBoard::from(board.pieces().filter(|p| p.1.color == color).map(|p| p.0))
+
+
+
+
+
+
+
+
+pub struct SanToken {
+    kind: PieceKind,
+    src: Pos,
+    dst: Pos,
+
+    is_capture: bool,
+    is_check: bool,
+}
+
+impl SanToken {
+    pub fn new() -> SanToken {
+        SanToken {
+            kind: PieceKind::King,
+            src: Pos::new(0, 0),
+            dst: Pos::new(0, 0),
+            is_capture: false,
+            is_check: false,
+        }
+    }
+}
+
+impl<'a> fmt::Display for SanToken {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.kind != PieceKind::Pawn {
+            write!(f, "{}", self.kind.to_char().to_ascii_uppercase())?;
+        }
+
+        write!(f, "{}", self.src)?;
+
+        if self.is_capture {
+            write!(f, "x")?;
+        }
+
+        write!(f, "{}", self.dst)?;
+
+        if self.is_check {
+            write!(f, "+")?;
+        }
+
+        Ok(())
+    }
 }
