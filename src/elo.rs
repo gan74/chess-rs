@@ -4,8 +4,9 @@ use crate::piece::*;
 use crate::moves::*;
 
 use rand::{thread_rng, Rng};
-use std::sync::{Arc, Mutex};
 
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 
 const ELO_STARTING_SCORE : i64 = 1200;
@@ -22,6 +23,7 @@ struct Elo {
 pub struct History {
     elo: Elo,
 
+    pub timer: Duration,
     pub victories: usize,
     pub loses: usize,
     pub draws: usize,
@@ -87,7 +89,7 @@ impl EloPlayer {
             history: Mutex::new(
                 History {
                     elo: Elo::new(),
-
+                    timer: Duration::ZERO,
                     victories: 0,
                     loses: 0,
                     draws: 0,
@@ -104,52 +106,45 @@ impl EloPlayer {
         self.history.lock().unwrap().clone()
     }
 
-    pub fn play_once(&self, other: &EloPlayer) -> usize {
+    pub fn play_once(&self, other: &EloPlayer) {
         let players = [&(*self.controller), &(*other.controller)];
-        let (result, moves) = play_once(players, MAX_MOVES);
+        let (result, durations) = play_once(players);
         {
             let mut hist_s = self.history.lock().unwrap();
             let mut hist_o = other.history.lock().unwrap();
+            hist_s.timer += durations[0];
+            hist_o.timer += durations[1];
             match result {
                 Some(0) => hist_s.win(&mut hist_o, ELO_K),
                 Some(1) => hist_o.win(&mut hist_s, ELO_K),
                 _ => hist_s.draw(&mut hist_o),
             }
         }
-        moves
     }
 }
 
 
 
-fn play_once(players: [&dyn PlayerController; 2], max_moves: usize) -> (Option<usize>, usize) {
+fn play_once(players: [&dyn PlayerController; 2]) -> (Option<usize>, [Duration; 2]) {
     let mut board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w");
+    let mut player_index = thread_rng().gen_range(0, 2);
+    let mut durations = [Duration::ZERO; 2];
 
-    let mut index = thread_rng().gen_range(0, 2);
-    let colors = if index == 1 {
-        [Color::Black, Color::White]
-    } else {
-        [Color::White, Color::Black]
-    };
-    assert!(colors[index] == Color::White);
-    
-    let mut moves = 0;
+    let mut moves_left = MAX_MOVES;
     loop {
-        let color = colors[index];
+        if moves_left == 0 {
+            return (None, durations);
+        }
+        moves_left -= 1;
 
-        if !board.has_king(color) {
+        if !board.has_king(board.to_move()) {
             break;
         }
 
-        moves += 1;
-        if moves >= max_moves {
-            return (None, max_moves);
-        }
-
+        let enemy_king_pos = board.king_pos(board.to_move().opponent());
         let move_set = generate_pseudo_legal_moves(&board);
-
-        if move_set.all_dst_positions().contains(board.king_pos(color.opponent())) {
-            index = 1 - index;
+        if move_set.all_dst_positions().contains(enemy_king_pos) {
+            player_index = 1 - player_index;
             break;
         }
 
@@ -157,16 +152,18 @@ fn play_once(players: [&dyn PlayerController; 2], max_moves: usize) -> (Option<u
             break;
         }
 
-        if let Some(m) = players[index].play(&move_set) {
-            board = board.play(m);
-            index = 1 - index;
+        let start = Instant::now();
+        let chosen = players[player_index].play(&move_set);
+        durations[player_index] += Instant::now() - start;
+
+        if let Some(mov) = chosen {
+            board = board.play(mov);
+            player_index = 1 - player_index;
         } else {
             break;
         }
     };
 
-    let winner = 1 - index;
-
-    debug_assert!(board.has_king(colors[winner]));
-    (Some(winner), moves)
+    let winner = 1 - player_index;
+    (Some(winner), durations)
 }

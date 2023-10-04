@@ -123,34 +123,32 @@ fn per_second(n: usize, time: Duration) -> f64 {
 
 fn main() {
     let players = vec![
-        EloPlayer::new(RandomAI()),
-        EloPlayer::new(TreeSearchAI(3)),
+        EloPlayer::new(TreeSearchV2AI(3)),
+        EloPlayer::new(AlphaBetaAI(3)),
     ];
 
-    let start = Instant::now();
 
     println!("Simulating:");
 
-    let moves = (0..GAMES).into_par_iter().progress().map(|_| {
+    let start = Instant::now();
+    (0..GAMES).into_par_iter().progress().map(|_| {
         let (a, b) = gen_player_indexes(players.len());
         let (first, second) = (cmp::min(a, b), cmp::max(a, b));
         assert!(a != b);
 
         let (pa, pb) = players.split_at(second);
-        pa[first].play_once(&pb[0])
-    }).sum::<usize>();
-
-    let end = Instant::now();
-    let time = end.duration_since(start);
+        pa[first].play_once(&pb[0]);
+    }).count();
+    let time = Instant::now() - start;
 
     println!("\n{} games played in {:?} ({} g/s)", GAMES, time, per_second(GAMES, time).round() as i64);
-    println!("{} moves played ({} m/s)", moves, per_second(moves, time).round() as i64);
 
     let mut total = 0;
     for player in players {
         let history = player.history();
         println!("\n{}", player.name());
         println!("  elo: {}", history.elo_score().round() as i64);
+        println!("  time: {:.2}s", history.timer.as_secs_f32());
         println!("  games: (w: {}, d: {}, l: {})", history.victories, history.draws, history.loses);
         total += history.victories + history.loses + history.draws;
     }
