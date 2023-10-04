@@ -229,9 +229,17 @@ impl PlayerController for AlphaBetaAI {
     }
 
     fn play<'a>(&self, moves: &'a MoveSet) -> Option<Move<'a>> {
-        moves.moves().max_by_key(|mov| {
-            let board = mov.parent_board().play(*mov);
-            Self::eval(board, self.0, i64::MIN, i64::MAX, false)
-        })
+        let mut best_score = i64::MIN;
+        let mut best_move: Option<Move> = None;
+
+        for mov in moves.moves() {
+            let board = mov.parent_board().play(mov);
+            let v = Self::eval(board, self.0, best_score, i64::MAX, false);
+            if v > best_score {
+                best_score = v;
+                best_move = Some(mov);
+            }
+        }
+        best_move
     }
 }
