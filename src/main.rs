@@ -45,7 +45,7 @@ use indicatif::ProgressIterator;
         println!("{}", m.san());
     }
 
-    board = board.with_move(move_set.moves().next().unwrap());*/
+    board = board.play(move_set.moves().next().unwrap());*/
 
 
     let mut index = thread_rng().gen_range(0, 2);
@@ -74,7 +74,7 @@ use indicatif::ProgressIterator;
         let move_set = generate_pseudo_legal_moves(&board);
         if let Some(m) = players[index].play(&move_set) {
             write!(writer, "{} ", m.san())?;
-            board = board.with_move(m);
+            board = board.play(m);
             index = 1 - index;
         } else {
             break;
@@ -101,7 +101,7 @@ fn main() {
 
 
 
-const GAMES: usize = 100_000;
+const GAMES: usize = 1_000;
 
 fn gen_player_indexes(player_count: usize) -> (usize, usize) {
     assert!(player_count > 1);
@@ -123,24 +123,24 @@ fn per_second(n: usize, time: Duration) -> f64 {
 fn main() {
     let mut players = Vec::new();
     players.push(EloPlayer::new(RandomAI()));
-    players.push(EloPlayer::new(CaptureAI()));
+    players.push(EloPlayer::new(CaptureAI{search_check: false}));
+    players.push(EloPlayer::new(CaptureAI{search_check: true}));
+    players.push(EloPlayer::new(MonteCarloAI(1000)));
 
     let start = Instant::now();
 
     println!("Simulating:");
 
     let mut moves = 0;
-    for _ in (0..(GAMES / 1000)).progress() {
-        for _ in 0..1000 {
-            let (a, b) = gen_player_indexes(players.len());
-            let (first, second) = (cmp::min(a, b), cmp::max(a, b));
-            assert!(a != b);
+    for _ in (0..GAMES).progress() {
+        let (a, b) = gen_player_indexes(players.len());
+        let (first, second) = (cmp::min(a, b), cmp::max(a, b));
+        assert!(a != b);
 
-            let (pa, pb) = players.split_at_mut(second);
-            let pa: &mut EloPlayer = &mut pa[first];
-            let pb: &mut EloPlayer = &mut pb[0];
-            moves += pa.play_once(pb);
-        }
+        let (pa, pb) = players.split_at_mut(second);
+        let pa: &mut EloPlayer = &mut pa[first];
+        let pb: &mut EloPlayer = &mut pb[0];
+        moves += pa.play_once(pb);
     }
 
     let end = Instant::now();

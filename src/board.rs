@@ -1,6 +1,7 @@
 use crate::piece::*;
 use crate::pos::*;
 use crate::moves::*;
+use crate::bitboard::*;
 
 use std::fmt;
 use std::io;
@@ -14,9 +15,10 @@ use std::cell::RefCell;
 pub struct Board {
     board: [Piece; 64],
 
-    to_move: Color,
-
     kings: [Pos; 2],
+    pieces: [BitBoard; 2],
+
+    to_move: Color,
 }
 
 
@@ -24,8 +26,11 @@ impl Board {
     pub fn empty() -> Board {
         Board {
             board: [Piece::none(); 64],
-            to_move: Color::White,
+
             kings: [Pos::new(0, 0); 2],
+            pieces: [BitBoard::empty(); 2],
+
+            to_move: Color::White,
         }
     }
 
@@ -61,11 +66,21 @@ impl Board {
             }
         }
 
-        let cloned = board.clone();
-        let move_set = generate_pseudo_legal_moves(&cloned);
-        board.update_from_move_set(&move_set);
+        for i in 0..64 {
+            let p = board.board[i];
+            if !p.is_none() {
+                let color_index = p.color.index();
+                let pos = Pos::from_index(i);
+                board.pieces[color_index] += pos;
+                if p.kind == PieceKind::King {
+                    board.kings[color_index] = pos;
+                }
+            }
+        }
+
         board
     }
+
 
     pub fn to_move(&self) -> Color {
         self.to_move
@@ -76,11 +91,12 @@ impl Board {
         self.board[pos.index()]
     }
 
-    pub fn all_pieces(&self) -> PieceIterator {
-        PieceIterator {
-            board: self,
-            index: 0
-        }
+    pub fn all_pieces(&self) -> impl Iterator<Item = (Pos, Piece)> + '_ {
+        self.board.iter().enumerate().filter(|e| !e.1.is_none()).map(|e| (Pos::from_index(e.0), *e.1))
+    }
+
+    pub fn pieces_for(&self, color: Color) -> BitBoard {
+        self.pieces[color.index()]
     }
 
     pub fn king_pos(&self, color: Color) -> Pos {
@@ -91,69 +107,41 @@ impl Board {
         self.piece_at(self.king_pos(color)) == Piece::new(PieceKind::King, color)
     }
 
-    pub fn with_move(&self, mov: Move) -> Board {
+
+
+
+    pub fn play(&self, mov: Move) -> Board {
         debug_assert!(std::ptr::eq(mov.parent_board(), self));
+        debug_assert!(!self.board[mov.src.index()].is_none());
         debug_assert!(self.board[mov.src.index()].color == self.to_move);
 
         let mut board = self.clone();
-        board.board[mov.dst.index()] = board.board[mov.src.index()];
-        board.board[mov.src.index()] = Piece::none();
-        board.to_move = board.to_move.opponent();
-        board.update_from_move_set(mov.parent_move_set());
+        {
+            let color_index = board.to_move.index();
+
+            // Fix king pos
+            if board.board[mov.src.index()].kind == PieceKind::King {
+                board.kings[color_index] = mov.dst;
+            }
+
+            // Move piece on board
+            board.board[mov.dst.index()] = board.board[mov.src.index()];
+            board.board[mov.src.index()] = Piece::none();
+
+            // Move piece in bitboards
+            board.pieces[color_index] -= mov.src;
+            board.pieces[color_index] += mov.dst;
+            board.pieces[1 - color_index] -= mov.dst;
+            debug_assert!(board.pieces[color_index].bit_count() == self.pieces[color_index].bit_count());
+            debug_assert!(board.pieces[1 - color_index].bit_count() <= self.pieces[1 - color_index].bit_count());
+
+            // Change player
+            board.to_move = board.to_move.opponent();
+        }
         board
     }
-
-    pub fn san<T: Write>(&self, writer: &mut T, mov: Move) -> io::Result<()> {
-        let piece = self.piece_at(mov.src);
-        let capture = if self.piece_at(mov.dst).is_none() { "" } else { "x" };
-        if piece.kind == PieceKind::Pawn {
-            write!(writer, "{}{}{}", mov.src, capture, mov.dst)
-        } else {
-            write!(writer, "{}{}{}{}", piece.kind.to_char().to_ascii_uppercase(), mov.src, capture, mov.dst)
-        }
-    }
-
-
-
-
-    fn update_from_move_set(&mut self, move_set: &MoveSet) {
-        self.update_king_positions();
-    }
-
-    fn update_king_positions(&mut self) {
-        for i in 0..64 {
-            let p = self.board[i];
-            if p.kind == PieceKind::King {
-                self.kings[p.color.index()] = Pos::from_index(i);
-            }
-        }
-    }
 }
 
-
-
-
-pub struct PieceIterator<'a> {
-    board: &'a Board,
-    index: usize,
-}
-
-impl<'a> Iterator for PieceIterator<'a> {
-    type Item = (Pos, Piece);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        while self.index < 64 && self.board.piece_at(Pos::from_index(self.index)).is_none() {
-            self.index += 1;
-        }
-        if self.index < 64 {
-            let pos = Pos::from_index(self.index);
-            self.index += 1;
-            Some((pos, self.board.piece_at(pos)))
-        } else {
-            None
-        }
-    }
-}
 
 
 

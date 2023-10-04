@@ -21,10 +21,9 @@ pub struct MoveSet<'a> {
     mask_count: usize,
 
     dst_positions: BitBoard,
-    opponents: BitBoard,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct Move<'a> {
     parent: &'a MoveSet<'a>,
 
@@ -45,7 +44,6 @@ impl<'a> MoveSet<'a> {
             masks: [empty_move_mask; 16],
             mask_count: 0,
             dst_positions: BitBoard::empty(),
-            opponents: BitBoard::empty(),
         }
     }
 
@@ -55,10 +53,6 @@ impl<'a> MoveSet<'a> {
 
     pub fn all_dst_positions(&self) -> BitBoard {
         self.dst_positions
-    }
-
-    pub fn opponent_pieces(&self) -> BitBoard {
-        self.opponents
     }
 
     pub fn moves(&self) -> MoveIterator {
@@ -88,14 +82,13 @@ impl<'a> MoveSet<'a> {
             )
     }
 
-
     pub fn parent_board(&self) -> &Board {
         return self.parent
     }
 
 
     fn push(&mut self, mov: MoveMask) {
-        debug_assert!(self.mask_count + 1 < self.masks.len());
+        debug_assert!(self.mask_count < self.masks.len());
         self.masks[self.mask_count] = mov;
         self.mask_count += 1;
         self.dst_positions += mov.dst;
@@ -125,6 +118,7 @@ impl<'a> Move<'a> {
         }
     }
 }
+
 
 
 
@@ -166,8 +160,8 @@ impl<'a> Iterator for MoveIterator<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         let m = self.inner.next();
         if m.is_none() {
+            self.inner.mask_index += 1;
             if self.inner.mask_index < self.inner.parent.mask_count {
-                self.inner.mask_index += 1;
                 self.inner.bits = self.inner.parent.masks[self.inner.mask_index].dst.set_positions();
                 self.next()
             } else {
@@ -195,17 +189,18 @@ impl<'a> Iterator for MoveIterator<'a> {
 
 
 
-
-
-
 pub fn generate_pseudo_legal_moves(board: &Board) -> MoveSet {
-    let to_move = board.to_move();
-    let allies = bitboard_for_color(board, to_move);
-    let opponents = bitboard_for_color(board, to_move.opponent());
+    generate_pseudo_legal_moves_for_color(board, board.to_move())
+}
+
+
+
+pub fn generate_pseudo_legal_moves_for_color(board: &Board, to_move: Color) -> MoveSet {
+    let allies = board.pieces_for(to_move);
+    let opponents = board.pieces_for(to_move.opponent());
     let all_pieces = allies + opponents;
 
     let mut moves = MoveSet::new(board);
-    moves.opponents = opponents;
 
     for base_pos in allies.set_positions() {
         debug_assert!(allies.contains(base_pos));
@@ -356,15 +351,6 @@ pub fn generate_pseudo_legal_moves(board: &Board) -> MoveSet {
 
     moves
 }
-
-
-pub fn bitboard_for_color(board: &Board, color: Color) -> BitBoard {
-    BitBoard::from(board.all_pieces().filter(|p| {
-        debug_assert!(!p.1.is_none());
-        p.1.color == color
-    }).map(|p| p.0))
-}
-
 
 
 
